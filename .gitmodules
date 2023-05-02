@@ -1,0 +1,9 @@
+[submodule "cemalloc/externals/jemalloc"]
+	path = cemalloc/externals/jemalloc
+	url = https://github.com/jemalloc/jemalloc.git
+[submodule "linux"]
+	path = linux
+	url = https://github.com/skhynix/linux.git
+[submodule "numactl"]
+	path = numactl
+	url = https://github.com/skhynix/numactl.git
