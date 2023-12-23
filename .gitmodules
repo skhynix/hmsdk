@@ -7,3 +7,6 @@
 [submodule "numactl"]
 	path = numactl
 	url = https://github.com/skhynix/numactl.git
+[submodule "damo"]
+	path = damo
+	url = https://github.com/skhynix/damo.git
