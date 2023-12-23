@@ -11,8 +11,8 @@ import sys
 
 
 class HmsdkVersion:
-    Major = 1
-    Minor = 1
+    Major = 2
+    Minor = 0
 
 
 class OptionUtil:

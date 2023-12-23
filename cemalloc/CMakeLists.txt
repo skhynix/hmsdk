@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(
   CEMALLOC
-  VERSION 1.1
+  VERSION 2.0
   LANGUAGES CXX)
 
 if(NOT DEFINED LOG_LEVEL)
