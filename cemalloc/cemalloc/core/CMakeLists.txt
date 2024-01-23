@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 SK hynix, Inc.
+# Copyright (c) 2022-2024 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 list(APPEND cemalloc_flags "-Wall")
@@ -30,7 +30,7 @@ include_directories(${CMAKE_SOURCE_DIR}/cemalloc/include)
 include_directories(${CMAKE_SOURCE_DIR}/externals/jemalloc/include/jemalloc)
 
 add_library(cemalloc SHARED ${CEMALLOC_SOURCES})
-set_target_properties(cemalloc PROPERTIES VERSION ${VERSION_STRING})
+set_target_properties(cemalloc PROPERTIES VERSION ${CEMALLOC_VERSION})
 
 if(NOT DEFINED JEMALLOC_PREFIX)
   set(JEMALLOC_PREFIX ce)

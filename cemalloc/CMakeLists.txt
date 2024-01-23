@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 SK hynix, Inc.
+# Copyright (c) 2022-2024 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 cmake_minimum_required(VERSION 3.14)
@@ -20,10 +20,6 @@ add_definitions(-DDISTRO=0)
 if(CMAKE_BUILD_TYPE STREQUAL "debug")
   add_definitions(-DCEASSERT)
 endif()
-
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 1)
-set(VERSION_STRING ${VERSION_MAJOR}.${VERSION_MINOR})
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")

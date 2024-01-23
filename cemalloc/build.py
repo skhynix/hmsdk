@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2022-2023 SK hynix, Inc.
+# Copyright (c) 2022-2024 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 import argparse
@@ -8,11 +8,6 @@ import os
 import shutil
 import subprocess
 import sys
-
-
-class HmsdkVersion:
-    Major = 2
-    Minor = 0
 
 
 class OptionUtil:
@@ -221,9 +216,7 @@ class OptionParser:
         je_prefix = args.je_prefix
 
         if "build" in mode_list:
-            self._option.set_build(
-                build_type, build_target, log_level, je_prefix
-            )
+            self._option.set_build(build_type, build_target, log_level, je_prefix)
         if "test" in mode_list:
             self._option.set_test(test_list)
 
@@ -397,17 +390,13 @@ class BuildManager:
 
     def _generate_cemalloc_package(self, package_root):
         cemalloc_build_path = self.build_path + "/cemalloc/core/"
-        cemalloc_name = "libcemalloc.so.{}.{}".format(
-            HmsdkVersion.Major, HmsdkVersion.Minor
-        )
-        cemalloc_link_name = "libcemalloc.so"
-        shutil.copy(os.path.join(cemalloc_build_path, cemalloc_name), package_root)
-        lib_path = package_root + "/" + cemalloc_link_name
-        lib_path = os.path.normpath(lib_path)
-        if os.path.exists(lib_path) and os.path.islink(lib_path):
-            pass
-        else:
-            os.symlink(cemalloc_name, lib_path)
+        for filename in os.listdir(cemalloc_build_path):
+            if filename.startswith("libcemalloc.so"):
+                src_path = os.path.join(cemalloc_build_path, filename)
+                dst_path = os.path.join(package_root, filename)
+                if os.path.islink(dst_path):
+                    os.unlink(dst_path)
+                shutil.copy(src_path, dst_path, follow_symlinks=False)
 
     def _generate_python_package(self, package_root):
         whl_path = self.build_path + "/cemalloc_python/*.whl"
