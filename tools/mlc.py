@@ -27,7 +27,8 @@ class MLC:
         self.work_dir = os.path.dirname(os.path.realpath(__file__))
         self.mlc = self.work_dir + "/mlc/Linux/mlc"
         if os.path.isfile(self.mlc) == False:
-            self.mlc_dir = self.work_dir + "/mlc/"
+            mlc_filename = "mlc_v3.11.tgz"
+            self.mlc_dir = self.work_dir + "/mlc"
             if os.path.isdir(self.mlc_dir):
                 shutil.rmtree(self.mlc_dir)
             os.mkdir(self.mlc_dir)
@@ -35,11 +36,11 @@ class MLC:
             print("Download MLC...")
             cmd = (
                 f"wget -P {self.mlc_dir} "
-                "https://downloadmirror.intel.com/736634/mlc_v3.9a.tgz "
+                f"https://downloadmirror.intel.com/793041/{mlc_filename} "
                 "--no-check-certificate"
             )
             out = run_check_output(cmd)
-            cmd = f"tar -xvf {self.mlc_dir}mlc_v3.9a.tgz -C {self.mlc_dir}"
+            cmd = f"tar -xvf {self.mlc_dir}/{mlc_filename} -C {self.mlc_dir}"
             run_with_shell(cmd)
 
     def run_bandwidth_matrix(self):
