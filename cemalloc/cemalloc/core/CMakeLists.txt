@@ -1,15 +1,18 @@
+#
 # Copyright (c) 2022-2024 SK hynix, Inc.
+#
 # SPDX-License-Identifier: BSD 2-Clause
+#
 
-list(APPEND cemalloc_flags "-Wall")
-list(APPEND cemalloc_flags "-Wextra")
-list(APPEND cemalloc_flags "-Wsign-compare")
+list(APPEND CEMALLOC_FLAGS "-Wall")
+list(APPEND CEMALLOC_FLAGS "-Wextra")
+list(APPEND CEMALLOC_FLAGS "-Wsign-compare")
 if(${DISTRIBUTION})
-  list(APPEND cemalloc_flags "-fvisibility=hidden")
+  list(APPEND CEMALLOC_FLAGS "-fvisibility=hidden")
 endif()
-list(JOIN cemalloc_flags " " cemalloc_flags)
-message(STATUS "FLAGS: " ${cemalloc_flags})
-set(CMAKE_CXX_FLAGS ${cemalloc_flags})
+list(JOIN CEMALLOC_FLAGS " " CEMALLOC_FLAGS)
+message(STATUS "FLAGS: " ${CEMALLOC_FLAGS})
+set(CMAKE_CXX_FLAGS ${CEMALLOC_FLAGS})
 
 set(CEMALLOC_SOURCES
     constructor.cc

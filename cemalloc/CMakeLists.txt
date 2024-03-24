@@ -1,5 +1,8 @@
+#
 # Copyright (c) 2022-2024 SK hynix, Inc.
+#
 # SPDX-License-Identifier: BSD 2-Clause
+#
 
 cmake_minimum_required(VERSION 3.14)
 
