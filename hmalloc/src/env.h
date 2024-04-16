@@ -4,4 +4,5 @@
 #include <stdbool.h>
 
 bool getenv_jemalloc(void);
-unsigned long getenv_node_id(void);
+unsigned long getenv_nodemask(void);
+int getenv_mpol_mode(void);

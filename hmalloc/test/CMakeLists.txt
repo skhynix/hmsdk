@@ -28,4 +28,4 @@ add_dependencies(${HMALLOC_TEST} catch2)
 set(CMAKE_INSTALL_RPATH "..")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH True)
 
-target_link_libraries(hmalloc_test PUBLIC ${HMALLOC})
+target_link_libraries(hmalloc_test PUBLIC ${HMALLOC} ${NUMA})

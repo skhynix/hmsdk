@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <jemalloc/jemalloc.h>
+#include <numa.h>
+#include <numaif.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -17,15 +19,32 @@
 
 #define __unused __attribute__((unused))
 
+/* global variables set by environment variables */
 static bool use_jemalloc;
+static unsigned long nodemask;
+static int mpol_mode;
 
 static unsigned arena_index;
 static extent_hooks_t *hooks;
+
+static int maxnode;
 
 void *extent_alloc(extent_hooks_t *extent_hooks __unused, void *new_addr, size_t size,
                    size_t alignment __unused, bool *zero __unused, bool *commit __unused,
                    unsigned arena_ind __unused) {
     new_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
+    if (unlikely(new_addr == MAP_FAILED))
+        return MAP_FAILED;
+
+    if (nodemask > 0) {
+        long ret = mbind(new_addr, size, mpol_mode, &nodemask, maxnode, 0);
+        if (unlikely(ret)) {
+            int mbind_errno = errno;
+            munmap(new_addr, size);
+            errno = mbind_errno;
+            return NULL;
+        }
+    }
     return new_addr;
 }
 
@@ -41,6 +60,8 @@ static extent_hooks_t extent_hooks = {
 
 void update_env(void) {
     use_jemalloc = getenv_jemalloc();
+    nodemask = getenv_nodemask();
+    mpol_mode = getenv_mpol_mode();
 }
 
 __attribute__((constructor)) void hmalloc_init(void) {
@@ -50,6 +71,7 @@ __attribute__((constructor)) void hmalloc_init(void) {
     update_env();
 
     if (use_jemalloc) {
+        maxnode = numa_max_node() + 2;
         hooks = &extent_hooks;
         err = mallctl("arenas.create", &arena_index, &unsigned_size, (void *)&hooks,
                       sizeof(extent_hooks_t *));

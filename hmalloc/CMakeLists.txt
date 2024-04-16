@@ -35,6 +35,11 @@ if(NOT JEMALLOC)
   message(FATAL_ERROR "jemalloc library not found!")
 endif()
 
+find_library(NUMA numa)
+if(NOT NUMA)
+  message(FATAL_ERROR "numa library not found!")
+endif()
+
 add_library(${HMALLOC} SHARED ${HMALLOC_SOURCES})
 
 target_include_directories(
@@ -42,7 +47,7 @@ target_include_directories(
   PUBLIC include
   PRIVATE src)
 
-target_link_libraries(${HMALLOC} PRIVATE ${JEMALLOC})
+target_link_libraries(${HMALLOC} PRIVATE ${JEMALLOC} ${NUMA})
 
 if(HMALLOC_TEST)
   add_subdirectory(test)
