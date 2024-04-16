@@ -1,6 +1,8 @@
 /* Copyright (c) 2024 SK hynix, Inc. */
 /* SPDX-License-Identifier: BSD 2-Clause */
 
+#include "env.h"
+
 #include <assert.h>
 #include <errno.h>
 #include <jemalloc/jemalloc.h>
@@ -37,14 +39,17 @@ static extent_hooks_t extent_hooks = {
     .dalloc = extent_dalloc,
 };
 
+void update_env(void) {
+    use_jemalloc = getenv_jemalloc();
+}
+
 __attribute__((constructor)) void hmalloc_init(void) {
     int err __unused;
     size_t unsigned_size = sizeof(unsigned);
-    char *env_jemalloc = getenv("HMALLOC_JEMALLOC");
 
-    if (env_jemalloc && !strcmp(env_jemalloc, "1")) {
-        use_jemalloc = true;
+    update_env();
 
+    if (use_jemalloc) {
         hooks = &extent_hooks;
         err = mallctl("arenas.create", &arena_index, &unsigned_size, (void *)&hooks,
                       sizeof(extent_hooks_t *));
