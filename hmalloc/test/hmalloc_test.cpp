@@ -3,9 +3,20 @@
 
 #include "catch.hpp"
 
+#include <cstdlib>
 #include <cstring>
 #include <hmalloc.h>
 #include <vector>
+
+extern "C" void hmalloc_init(void);
+
+__attribute__((constructor)) void init() {
+    char *env = getenv("HMALLOC_JEMALLOC");
+    if (!env || !strcmp(env, "1")) {
+        setenv("HMALLOC_JEMALLOC", "1", 1);
+        hmalloc_init();
+    }
+}
 
 static void hmalloc_test(const std::vector<size_t> &sizes) {
     std::vector<unsigned char *> v;

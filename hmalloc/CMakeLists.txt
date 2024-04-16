@@ -30,6 +30,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(HMALLOC hmalloc)
 set(HMALLOC_SOURCES src/hmalloc.c)
 
+find_library(JEMALLOC jemalloc)
+if(NOT JEMALLOC)
+  message(FATAL_ERROR "jemalloc library not found!")
+endif()
+
 add_library(${HMALLOC} SHARED ${HMALLOC_SOURCES})
 
 target_include_directories(
@@ -37,7 +42,7 @@ target_include_directories(
   PUBLIC include
   PRIVATE src)
 
-target_link_libraries(${HMALLOC} PRIVATE)
+target_link_libraries(${HMALLOC} PRIVATE ${JEMALLOC})
 
 if(HMALLOC_TEST)
   add_subdirectory(test)
