@@ -18,6 +18,8 @@ endif()
 
 add_compile_options(-Wall -Wextra -pedantic)
 
+option(HMALLOC_MANUAL "hmalloc: man" OFF)
+
 option(HMALLOC_TEST "hmalloc: test" OFF)
 
 option(HMALLOC_PG_BUILD "hmalloc: -pg" OFF)
@@ -55,4 +57,13 @@ target_link_libraries(${HMALLOC} PRIVATE ${JEMALLOC} ${NUMA})
 
 if(HMALLOC_TEST)
   add_subdirectory(test)
+endif()
+
+if(HMALLOC_MANUAL)
+  add_custom_target(
+    man ALL
+    COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.md -t man -o
+            ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating man page")
 endif()
