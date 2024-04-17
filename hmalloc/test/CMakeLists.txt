@@ -25,7 +25,10 @@ set(HMALLOC_TEST hmalloc_test)
 add_executable(${HMALLOC_TEST} hmalloc_test.cpp main.cpp)
 add_dependencies(${HMALLOC_TEST} catch2)
 
+add_executable(example example.c)
+
 set(CMAKE_INSTALL_RPATH "..")
 set(CMAKE_BUILD_WITH_INSTALL_RPATH True)
 
 target_link_libraries(hmalloc_test PUBLIC ${HMALLOC} ${NUMA})
+target_link_libraries(example PUBLIC ${HMALLOC})
