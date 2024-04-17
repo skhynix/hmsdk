@@ -27,6 +27,10 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+set(HMCTL hmctl)
+set(HMCTL_SOURCES src/hmctl.c)
+add_executable(${HMCTL} ${HMCTL_SOURCES})
+
 set(HMALLOC hmalloc)
 set(HMALLOC_SOURCES src/hmalloc.c src/env.c)
 
