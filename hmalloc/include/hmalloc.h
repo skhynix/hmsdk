@@ -12,6 +12,9 @@ extern "C" {
 
 void *hmalloc(size_t size);
 void hfree(void *ptr);
+void *hcalloc(size_t nmemb, size_t size);
+void *hrealloc(void *ptr, size_t size);
+size_t hmalloc_usable_size(void *ptr);
 
 #ifdef __cplusplus
 }

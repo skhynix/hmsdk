@@ -19,6 +19,10 @@ void *extent_alloc(extent_hooks_t *extent_hooks, void *new_addr, size_t size, si
                    bool *zero, bool *commit, unsigned arena_ind);
 }
 
+static constexpr auto kb = 1024UL;
+static constexpr auto mb = 1024UL * kb;
+static constexpr auto gb = 1024UL * mb;
+
 __attribute__((constructor)) void init() {
     char *env = getenv("HMALLOC_JEMALLOC");
     if (!env || !strcmp(env, "1")) {
@@ -62,6 +66,85 @@ TEST_CASE("hmalloc") {
             for (int i = 0; i < 3; i++)
                 hmalloc_test(sizes);
         }
+    }
+}
+
+TEST_CASE("hcalloc") {
+    size_t nmemb = 1 * mb;
+    size_t size = sizeof(char);
+
+    SECTION("zeroing check") {
+        auto *hptr = static_cast<char *>(hcalloc(nmemb, size));
+        REQUIRE(hptr);
+
+        auto *ptr = static_cast<char *>(calloc(nmemb, size));
+        REQUIRE(ptr);
+
+        CHECK(0 == memcmp(ptr, hptr, nmemb * size));
+
+        free(ptr);
+        hfree(hptr);
+    }
+}
+
+TEST_CASE("hmalloc_usable_size") {
+    SECTION("legit pointer") {
+        void *ptr = hmalloc(1024);
+        REQUIRE(ptr);
+        CHECK(0 < hmalloc_usable_size(ptr));
+        hfree(ptr);
+    }
+
+    SECTION("NULL pointer") {
+        CHECK(0 == hmalloc_usable_size(nullptr));
+    }
+}
+
+TEST_CASE("hrealloc") {
+    size_t old_size = 1 * mb;
+    auto *old_ptr = static_cast<char *>(hcalloc(old_size, sizeof(char)));
+    REQUIRE(old_ptr);
+
+    SECTION("size zero") {
+        size_t new_size = 0;
+        CHECK(nullptr == static_cast<char *>(hrealloc(old_ptr, new_size)));
+    }
+
+    SECTION("old_size < new_size") {
+        size_t new_size = old_size * 2;
+        auto *new_ptr = static_cast<char *>(hrealloc(old_ptr, new_size));
+        REQUIRE(new_ptr);
+        CHECK(new_size <= hmalloc_usable_size(new_ptr));
+        hfree(new_ptr);
+    }
+
+    SECTION("old_size > new_size") {
+        size_t new_size = old_size / 2;
+        auto *new_ptr = static_cast<char *>(hrealloc(old_ptr, new_size));
+        REQUIRE(new_ptr);
+        CHECK(new_size <= hmalloc_usable_size(new_ptr));
+        CHECK(old_size > hmalloc_usable_size(new_ptr));
+        hfree(new_ptr);
+    }
+
+    SECTION("old_ptr is nullptr") {
+        size_t new_size = old_size;
+        hfree(old_ptr);
+        old_ptr = nullptr;
+        auto *new_ptr = static_cast<char *>(hrealloc(old_ptr, new_size));
+        REQUIRE(new_ptr);
+        CHECK(new_size <= hmalloc_usable_size(new_ptr));
+        hfree(new_ptr);
+    }
+
+    SECTION("old_ptr is nullptr and size zero") {
+        hfree(old_ptr);
+        old_ptr = nullptr;
+        size_t new_size = 0;
+        auto *new_ptr = static_cast<char *>(hrealloc(old_ptr, new_size));
+        REQUIRE(new_ptr);
+        CHECK(0 < hmalloc_usable_size(new_ptr));
+        hfree(new_ptr);
     }
 }
 

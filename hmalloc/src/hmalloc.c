@@ -100,3 +100,34 @@ void hfree(void *ptr) {
     }
     dallocx(ptr, MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE);
 }
+
+void *hcalloc(size_t nmemb, size_t size) {
+    void *ptr = hmalloc(nmemb * size);
+
+    if (likely(ptr))
+        memset(ptr, 0, nmemb * size);
+    return ptr;
+}
+
+void *hrealloc(void *ptr, size_t size) {
+    if (!use_jemalloc)
+        return realloc(ptr, size);
+
+    if (ptr == NULL)
+        return hmalloc(size);
+
+    if (size == 0) {
+        hfree(ptr);
+        return NULL;
+    }
+    return rallocx(ptr, size, MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE);
+}
+
+size_t hmalloc_usable_size(void *ptr) {
+    if (!use_jemalloc)
+        return malloc_usable_size(ptr);
+
+    if (unlikely(ptr == NULL))
+        return 0;
+    return sallocx(ptr, 0);
+}
