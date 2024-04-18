@@ -67,3 +67,8 @@ if(HMALLOC_MANUAL)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating man page")
 endif()
+
+install(TARGETS ${HMCTL} DESTINATION bin)
+install(TARGETS ${HMALLOC} DESTINATION lib)
+install(FILES include/hmalloc.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8 DESTINATION share/man)
