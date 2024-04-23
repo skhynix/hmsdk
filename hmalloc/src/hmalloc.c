@@ -19,6 +19,8 @@
 
 #define __unused __attribute__((unused))
 
+#define is_pow2(val) (((val) & ((val)-1)) == 0)
+
 /* global variables set by environment variables */
 static bool use_jemalloc;
 static unsigned long nodemask;
@@ -121,6 +123,43 @@ void *hrealloc(void *ptr, size_t size) {
         return NULL;
     }
     return rallocx(ptr, size, MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE);
+}
+
+void *haligned_alloc(size_t alignment, size_t size) {
+    if (!use_jemalloc)
+        return aligned_alloc(alignment, size);
+
+    if (unlikely(!alignment || !size || !is_pow2(alignment) || (size % alignment))) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    return mallocx(size,
+                   MALLOCX_ALIGN(alignment) | MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE);
+}
+
+int hposix_memalign(void **memptr, size_t alignment, size_t size) {
+    int old_errno;
+
+    if (!use_jemalloc)
+        return posix_memalign(memptr, alignment, size);
+
+    old_errno = errno;
+
+    if (unlikely(!alignment || !size || !is_pow2(alignment) || (size % alignment))) {
+        *memptr = NULL;
+        return EINVAL;
+    }
+
+    *memptr =
+        mallocx(size, MALLOCX_ALIGN(alignment) | MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE);
+
+    if (unlikely(*memptr == NULL)) {
+        int ret = errno;
+        errno = old_errno;
+        return ret;
+    }
+    return 0;
 }
 
 size_t hmalloc_usable_size(void *ptr) {
