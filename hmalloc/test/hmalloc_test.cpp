@@ -5,11 +5,13 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <hmalloc.h>
 #include <jemalloc/jemalloc.h>
 #include <numa.h>
 #include <numaif.h>
 #include <sys/mman.h>
+#include <unistd.h>
 #include <vector>
 
 extern "C" {
@@ -235,6 +237,35 @@ TEST_CASE("hfree") {
 
     SECTION("nullptr hfree") {
         hfree(nullptr);
+    }
+}
+
+TEST_CASE("hmmap/hmunmap") {
+    SECTION("anonymous") {
+        size_t size = 1 * mb;
+        void *ptr = hmmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
+        REQUIRE(MAP_FAILED != ptr);
+        CHECK(0 == hmunmap(ptr, size));
+    }
+
+    SECTION("file map") {
+        const char *filename = "/tmp/__hmalloc.txt";
+        FILE *fp = fopen(filename, "w+");
+        REQUIRE(fp);
+
+        int fd = fileno(fp);
+        size_t file_size = 1 * mb;
+
+        REQUIRE(fd >= 0);
+        REQUIRE(0 == ftruncate(fd, file_size));
+
+        void *ptr = hmmap(NULL, file_size, PROT_WRITE, MAP_PRIVATE, fd, 0);
+        REQUIRE(MAP_FAILED != ptr);
+
+        CHECK(0 == hmunmap(ptr, file_size));
+        CHECK(0 == remove(filename));
+
+        CHECK(0 == fclose(fp));
     }
 }
 

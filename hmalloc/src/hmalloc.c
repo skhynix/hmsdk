@@ -31,18 +31,16 @@ static extent_hooks_t *hooks;
 
 static int maxnode;
 
-void *extent_alloc(extent_hooks_t *extent_hooks __unused, void *new_addr, size_t size,
-                   size_t alignment __unused, bool *zero __unused, bool *commit __unused,
-                   unsigned arena_ind __unused) {
-    new_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
+void *hmmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+    void *new_addr = mmap(addr, length, prot, flags, fd, offset);
     if (unlikely(new_addr == MAP_FAILED))
         return MAP_FAILED;
 
     if (nodemask > 0) {
-        long ret = mbind(new_addr, size, mpol_mode, &nodemask, maxnode, 0);
+        long ret = mbind(new_addr, length, mpol_mode, &nodemask, maxnode, 0);
         if (unlikely(ret)) {
             int mbind_errno = errno;
-            munmap(new_addr, size);
+            munmap(new_addr, length);
             errno = mbind_errno;
             return NULL;
         }
@@ -50,9 +48,20 @@ void *extent_alloc(extent_hooks_t *extent_hooks __unused, void *new_addr, size_t
     return new_addr;
 }
 
+int hmunmap(void *addr, size_t length) {
+    return munmap(addr, length);
+}
+
+void *extent_alloc(extent_hooks_t *extent_hooks __unused, void *new_addr, size_t size,
+                   size_t alignment __unused, bool *zero __unused, bool *commit __unused,
+                   unsigned arena_ind __unused) {
+    new_addr = hmmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, 0, 0);
+    return new_addr;
+}
+
 static bool extent_dalloc(extent_hooks_t *extent_hooks __unused, void *addr, size_t size,
                           bool committed __unused, unsigned arena_ind __unused) {
-    return munmap(addr, size);
+    return hmunmap(addr, size);
 }
 
 static extent_hooks_t extent_hooks = {
