@@ -18,6 +18,8 @@ endif()
 
 add_compile_options(-Wall -Wextra -pedantic)
 
+option(HMALLOC_TEST "hmalloc: test" OFF)
+
 option(HMALLOC_PG_BUILD "hmalloc: -pg" OFF)
 if(HMALLOC_PG_BUILD)
   add_compile_options(-pg)
@@ -36,3 +38,7 @@ target_include_directories(
   PRIVATE src)
 
 target_link_libraries(${HMALLOC} PRIVATE)
+
+if(HMALLOC_TEST)
+  add_subdirectory(test)
+endif()
