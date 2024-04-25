@@ -158,6 +158,7 @@ TEST_CASE("haligned_alloc") {
         hfree(ptr);
     }
 
+#if !defined(__SANITIZE_ADDRESS__)
     SECTION("alignment not a power of two") {
         size_t size = 1 * mb;
         CHECK(nullptr == haligned_alloc(1024 + 1, size));
@@ -176,6 +177,7 @@ TEST_CASE("haligned_alloc") {
         CHECK(nullptr == haligned_alloc(alignment, size + 1));
         CHECK(EINVAL == errno);
     }
+#endif
 
     SECTION("size zero") {
         size_t alignment = 1024;
@@ -197,6 +199,7 @@ TEST_CASE("hposix_memalign") {
         hfree(ptr);
     }
 
+#if !defined(__SANITIZE_ADDRESS__)
     SECTION("alignment not a power of two") {
         void *ptr;
         size_t alignment = 1024;
@@ -212,6 +215,7 @@ TEST_CASE("hposix_memalign") {
         CHECK(EINVAL == hposix_memalign(&ptr, alignment, size));
         CHECK(nullptr == ptr);
     }
+#endif
 
     SECTION("size zero") {
         void *ptr;

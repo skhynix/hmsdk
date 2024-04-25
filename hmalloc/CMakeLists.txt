@@ -27,6 +27,12 @@ if(HMALLOC_PG_BUILD)
   add_compile_options(-pg)
 endif()
 
+option(HMALLOC_ASAN_BUILD "hmalloc: -fsanitize=address" OFF)
+if(HMALLOC_ASAN_BUILD)
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(HMCTL hmctl)

@@ -12,6 +12,11 @@ if(HMALLOC_PG_BUILD)
   add_compile_options(-pg)
 endif()
 
+if(HMALLOC_ASAN_BUILD)
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
+endif()
+
 # cmake-lint: disable=C0301
 add_custom_target(
   catch2 ALL
