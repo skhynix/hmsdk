@@ -156,36 +156,43 @@ TEST_CASE("haligned_alloc") {
         size_t size = 1 * mb;
         void *ptr = haligned_alloc(alignment, size);
         REQUIRE(ptr);
-        REQUIRE(0 == reinterpret_cast<uintptr_t>(ptr) % alignment);
+        CHECK(0 == reinterpret_cast<uintptr_t>(ptr) % alignment);
+        CHECK(0 < hmalloc_usable_size(ptr));
         hfree(ptr);
     }
 
 #if !defined(__SANITIZE_ADDRESS__)
-    SECTION("alignment not a power of two") {
+    SECTION("alignment not a power of two (fails in ptmalloc)") {
         size_t size = 1 * mb;
-        CHECK(nullptr == haligned_alloc(1024 + 1, size));
+        REQUIRE(nullptr == haligned_alloc(1024 + 1, size));
         CHECK(EINVAL == errno);
     }
 
-    SECTION("alignment zero") {
+    SECTION("alignment zero (fails in ptmalloc)") {
         size_t size = 1 * mb;
-        CHECK(nullptr == haligned_alloc(0, size));
+        REQUIRE(nullptr == haligned_alloc(0, size));
         CHECK(EINVAL == errno);
     }
 
     SECTION("size not a multiple of alignment") {
         size_t alignment = 1024;
         size_t size = 1 * kb * alignment; /* 1 mb */
-        CHECK(nullptr == haligned_alloc(alignment, size + 1));
-        CHECK(EINVAL == errno);
+        void *ptr = haligned_alloc(alignment, size + 1);
+        REQUIRE(ptr);
+        CHECK(0 == reinterpret_cast<uintptr_t>(ptr) % alignment);
+        CHECK(0 < hmalloc_usable_size(ptr));
+        hfree(ptr);
     }
 #endif
 
     SECTION("size zero") {
         size_t alignment = 1024;
         size_t size = 0;
-        CHECK(nullptr == haligned_alloc(alignment, size));
-        CHECK(EINVAL == errno);
+        void *ptr = haligned_alloc(alignment, size);
+        REQUIRE(ptr);
+        CHECK(0 == reinterpret_cast<uintptr_t>(ptr) % alignment);
+        CHECK(0 < hmalloc_usable_size(ptr));
+        hfree(ptr);
     }
 }
 
@@ -223,8 +230,11 @@ TEST_CASE("hposix_memalign") {
         void *ptr;
         size_t alignment = 1024;
         size_t size = 0;
-        CHECK(EINVAL == hposix_memalign(&ptr, alignment, size));
-        CHECK(nullptr == ptr);
+        REQUIRE(0 == hposix_memalign(&ptr, alignment, size));
+        REQUIRE(ptr);
+        CHECK(0 == reinterpret_cast<uintptr_t>(ptr) % alignment);
+        CHECK(0 < hmalloc_usable_size(ptr));
+        hfree(ptr);
     }
 }
 

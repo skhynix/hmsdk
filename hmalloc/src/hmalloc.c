@@ -138,7 +138,8 @@ void *haligned_alloc(size_t alignment, size_t size) {
     if (!use_jemalloc)
         return aligned_alloc(alignment, size);
 
-    if (unlikely(!alignment || !size || !is_pow2(alignment) || (size % alignment))) {
+    /* NOTE: ptmalloc in glibc ignores all these checks unlike jemalloc */
+    if (unlikely(alignment == 0 || !is_pow2(alignment))) {
         errno = EINVAL;
         return NULL;
     }
@@ -155,7 +156,7 @@ int hposix_memalign(void **memptr, size_t alignment, size_t size) {
 
     old_errno = errno;
 
-    if (unlikely(!alignment || !size || !is_pow2(alignment) || (size % alignment))) {
+    if (unlikely(alignment == 0 || !is_pow2(alignment))) {
         *memptr = NULL;
         return EINVAL;
     }
