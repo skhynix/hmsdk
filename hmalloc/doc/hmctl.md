@@ -14,14 +14,10 @@ hmctl [_options_] COMMAND [_command-options_]
 
 DESCRIPTION
 ===========
-The hmctl tool is to control heterogeneous memory allocation policy for hmalloc
-family allocation APIs provided by libhmalloc.so library.  For simplicity, the
-hmalloc family allocation APIs will be called as hmalloc APIs below.
-
-The hmctl changes memory policy only for the area allocated by hmalloc APIs then
-executes the given `COMMAND` program, which is linked with libhmalloc.so at
-build time.  The rest of memory region other than hmalloc area is not affected
-by this tool.
+The **hmctl** tool is to control heterogeneous memory allocation policy.  It
+changes memory policy only for the area allocated by **hmalloc APIs**, which is
+called as **hmalloc pool** then executes the given `COMMAND` program.  The rest
+of memory regions other than **hmalloc pool** are not affected by this tool.
 
 
 OPTIONS
@@ -41,8 +37,8 @@ OPTIONS
 
 EXAMPLES
 ========
-Let's say if the target test program allocates 512 MiB using hmalloc(), then
-this memory area can be allocated to the intended node as follows.
+Let's say if the target test program allocates 512 MiB using **hmalloc**(3),
+then this memory area can be allocated to the intended node as follows.
 
     # Allocate hmalloc area to node 2 with MPOL_BIND policy.
     $ hmctl -m 2 ./prog
@@ -62,6 +58,36 @@ be used along with numactl as follows.
     $ numactl -i 1,2 hmctl -p 3 ./prog
 
 
+GLOSSARY
+========
+HMALLOC APIS
+------------
+The **hmalloc APIs** are heterogeneous memory allocation APIs provided by
+**libhmalloc.so** such as **hmalloc**(3), **hcalloc**(3),
+**hposix_memalign**(3), **hmmap**(3), etc.  All the APIs defined in
+**hmalloc.h** are **hmalloc APIs**.
+
+HMALLOC POOL
+------------
+The **hmalloc pool** is specially managed memory areas that can be optionally
+controlled by **hmctl**(8) tool.
+If target programs allocate memory using **hmalloc APIs**, then this area is
+mapped as **hmalloc pool**.  This **hmalloc pool** has no effect if the target
+program runs without **hmctl**(8), but if it runs with **hmctl**(8) attached,
+then the memory policy of this area can be changed based on the usage of
+**hmctl**(8).
+
+HMCTL
+-----
+The **hmctl**(8) is a tool that controls heterogeneous memory allocation policy.
+That means it can change the memory policy of **hmalloc pool** allocated by
+**hmalloc APIs** internally using **mmap**(2) and **mbind**(2).
+If **hmctl**(8) is attached and **-m**/**--membind** or **-p**/**--preferred**
+option is given with a valid NUMA node ID, then the **hmalloc pool** memory is
+allocated from the target node with the given memory policy based on the usage
+of **hmctl**(8).
+
+
 SEE ALSO
 ========
-`numactl`(8)
+**numactl**(8), **hmalloc**(3)

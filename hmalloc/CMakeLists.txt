@@ -70,6 +70,14 @@ if(HMALLOC_MANUAL)
     man ALL
     COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.md -t man -o
             ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8
+    COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc.md -t man -o
+            ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc.3
+    COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc_usable_size.md -t
+            man -o ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc_usable_size.3
+    COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hposix_memalign.md -t man
+            -o ${CMAKE_CURRENT_SOURCE_DIR}/doc/hposix_memalign.3
+    COMMAND pandoc -s ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmmap.md -t man -o
+            ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmmap.3
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating man page")
 endif()
@@ -77,4 +85,10 @@ endif()
 install(TARGETS ${HMCTL} DESTINATION bin)
 install(TARGETS ${HMALLOC} DESTINATION lib)
 install(FILES include/hmalloc.h DESTINATION include)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8 DESTINATION share/man)
+install(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8
+        ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc.3
+        ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc_usable_size.3
+        ${CMAKE_CURRENT_SOURCE_DIR}/doc/hposix_memalign.3
+        ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmmap.3
+  DESTINATION share/man)
