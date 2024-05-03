@@ -1,0 +1,4 @@
+*.patch
+*.diff
+*.orig
+__pycache__
