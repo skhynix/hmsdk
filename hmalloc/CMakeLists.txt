@@ -85,10 +85,11 @@ endif()
 install(TARGETS ${HMCTL} DESTINATION bin)
 install(TARGETS ${HMALLOC} DESTINATION lib)
 install(FILES include/hmalloc.h DESTINATION include)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8
+        DESTINATION share/man/man8)
 install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmctl.8
-        ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc.3
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc.3
         ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmalloc_usable_size.3
         ${CMAKE_CURRENT_SOURCE_DIR}/doc/hposix_memalign.3
         ${CMAKE_CURRENT_SOURCE_DIR}/doc/hmmap.3
-  DESTINATION share/man)
+  DESTINATION share/man/man3)
