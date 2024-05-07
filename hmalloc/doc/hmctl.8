@@ -17,10 +17,15 @@ APIs\f[R], which is called as \f[B]hmalloc pool\f[R] then executes the
 given \f[C]COMMAND\f[R] program.
 The rest of memory regions other than \f[B]hmalloc pool\f[R] are not
 affected by this tool.
+.PP
+\f[I]nodes\f[R] may be specified as N,N,N or N-N or N,N-N or N-N,N-N and
+so forth.
+Please see its annotation details at \f[B]numactl\f[R](8).
 .SH OPTIONS
 .TP
--m \f[I]node\f[R], --membind=\f[I]node\f[R]
-Allocate memory only from \f[I]node\f[R] for hmalloc family allocations.
+-m \f[I]nodes\f[R], --membind=\f[I]nodes\f[R]
+Allocate memory only from \f[I]nodes\f[R] for hmalloc family
+allocations.
 .TP
 -p \f[I]node\f[R], --preferred=\f[I]node\f[R]
 Preferably allocate memory on \f[I]node\f[R] for hmalloc family

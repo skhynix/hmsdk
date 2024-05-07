@@ -19,11 +19,14 @@ changes memory policy only for the area allocated by **hmalloc APIs**, which is
 called as **hmalloc pool** then executes the given `COMMAND` program.  The rest
 of memory regions other than **hmalloc pool** are not affected by this tool.
 
+_nodes_ may be specified as N,N,N or N-N or N,N-N or N-N,N-N and so forth.
+Please see its annotation details at **numactl**(8).
+
 
 OPTIONS
 =======
--m _node_, \--membind=_node_
-:   Allocate memory only from _node_ for hmalloc family allocations.
+-m _nodes_, \--membind=_nodes_
+:   Allocate memory only from _nodes_ for hmalloc family allocations.
 
 -p _node_, \--preferred=_node_
 :   Preferably allocate memory on _node_ for hmalloc family allocations.
