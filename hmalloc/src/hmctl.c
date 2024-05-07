@@ -20,6 +20,7 @@ struct opts {
 
     const char *membind;
     const char *preferred_many;
+    const char *interleave;
     int preferred;
 };
 
@@ -42,6 +43,10 @@ static struct argp_option hmctl_options[] = {
      .key = 'm',
      .arg = "nodes",
      .doc = "Only allocate memory from nodes for hmalloc family allocations"},
+    {.name = "interleave",
+     .key = 'i',
+     .arg = "nodes",
+     .doc = "Set a memory interleave policy. Memory will be allocated using round robin on nodes"},
     {NULL},
 };
 
@@ -70,6 +75,10 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
         opts->preferred = atoi(arg);
         if (opts->membind)
             fail_mpol_conflict(state, key);
+        break;
+
+    case 'i':
+        opts->interleave = arg;
         break;
 
     case ARGP_KEY_ARG:
@@ -130,6 +139,15 @@ static void setup_child_environ(struct opts *opts) {
         nodemask = 1 << opts->preferred;
         snprintf(buf, sizeof(buf), "%ld", nodemask);
         setenv("HMALLOC_NODEMASK", buf, 1);
+    } else if (opts->interleave) {
+        snprintf(buf, sizeof(buf), "%d", MPOL_INTERLEAVE);
+        setenv("HMALLOC_MPOL_MODE", buf, 1);
+
+        bm = numa_parse_nodestring(opts->interleave);
+        if (bm) {
+            snprintf(buf, sizeof(buf), "%lu", *bm->maskp);
+            setenv("HMALLOC_NODEMASK", buf, 1);
+        }
     }
 
     setenv("HMALLOC_JEMALLOC", "1", 1);
