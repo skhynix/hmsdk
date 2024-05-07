@@ -14,6 +14,10 @@
 #define MPOL_PREFERRED_MANY 5
 #endif
 
+#ifndef MPOL_WEIGHTED_INTERLEAVE
+#define MPOL_WEIGHTED_INTERLEAVE 6
+#endif
+
 struct opts {
     int idx;
     char *exename;
@@ -21,6 +25,7 @@ struct opts {
     const char *membind;
     const char *preferred_many;
     const char *interleave;
+    const char *weighted_interleave;
     int preferred;
 };
 
@@ -46,6 +51,11 @@ static struct argp_option hmctl_options[] = {
      .key = 'i',
      .arg = "nodes",
      .doc = "Set a memory interleave policy. Memory will be allocated using round robin on nodes"},
+    {.name = "weighted-interleave",
+     .key = 'w',
+     .arg = "nodes",
+     .doc = "Set a weighted memory interleave policy. Memory will be allocated using the weights "
+            "specified in its sysfs location"},
     {NULL},
 };
 
@@ -78,6 +88,10 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
 
     case 'i':
         opts->interleave = arg;
+        break;
+
+    case 'w':
+        opts->weighted_interleave = arg;
         break;
 
     case ARGP_KEY_ARG:
@@ -138,6 +152,15 @@ static void setup_child_environ(struct opts *opts) {
         nodemask = 1 << opts->preferred;
         snprintf(buf, sizeof(buf), "%ld", nodemask);
         setenv("HMALLOC_NODEMASK", buf, 1);
+    } else if (opts->weighted_interleave) {
+        snprintf(buf, sizeof(buf), "%d", MPOL_WEIGHTED_INTERLEAVE);
+        setenv("HMALLOC_MPOL_MODE", buf, 1);
+
+        bm = numa_parse_nodestring(opts->weighted_interleave);
+        if (bm) {
+            snprintf(buf, sizeof(buf), "%lu", *bm->maskp);
+            setenv("HMALLOC_NODEMASK", buf, 1);
+        }
     } else if (opts->interleave) {
         snprintf(buf, sizeof(buf), "%d", MPOL_INTERLEAVE);
         setenv("HMALLOC_MPOL_MODE", buf, 1);

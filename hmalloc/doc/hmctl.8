@@ -41,6 +41,11 @@ local is considered most preferred.
 Set a memory interleave policy.
 Memory will be allocated using round robin on \f[I]nodes\f[R].
 .TP
+-w \f[I]nodes\f[R], --weighted-interleave=\f[I]nodes\f[R]
+Set a weighted memory interleave policy.
+Memory will be allocated using the weighted ratio for each node, which
+can be read from /sys/kernel/mm/mempolicy/weighted_interleave/node*.
+.TP
 -?, --help
 Print help message and list of options with description
 .TP

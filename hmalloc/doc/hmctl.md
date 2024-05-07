@@ -40,6 +40,11 @@ OPTIONS
 :   Set a memory interleave policy.  Memory will be allocated using round robin
     on _nodes_.
 
+-w _nodes_, \--weighted-interleave=_nodes_
+:   Set a weighted memory interleave policy.  Memory will be allocated using the
+    weighted ratio for each node, which can be read from
+    /sys/kernel/mm/mempolicy/weighted_interleave/node*.
+
 -?, \--help
 :   Print help message and list of options with description
 
