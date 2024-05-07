@@ -31,6 +31,11 @@ OPTIONS
 -p _node_, \--preferred=_node_
 :   Preferably allocate memory on _node_ for hmalloc family allocations.
 
+-P _nodes_, \--preferred-many=_nodes_
+:   Preferably allocate memory on _nodes_ for hmalloc family allocations.
+    _nodes_ are a mask of preferred nodes where the closest node to local is
+    considered most preferred.
+
 -?, \--help
 :   Print help message and list of options with description
 
@@ -85,10 +90,9 @@ HMCTL
 The **hmctl**(8) is a tool that controls heterogeneous memory allocation policy.
 That means it can change the memory policy of **hmalloc pool** allocated by
 **hmalloc APIs** internally using **mmap**(2) and **mbind**(2).
-If **hmctl**(8) is attached and **-m**/**--membind** or **-p**/**--preferred**
-option is given with a valid NUMA node ID, then the **hmalloc pool** memory is
-allocated from the target node with the given memory policy based on the usage
-of **hmctl**(8).
+If **hmctl**(8) is attached and one of memory policy option is given with valid
+_node_ or _nodes_ argument, then the **hmalloc pool** memory is allocated from
+the target node with the given memory policy based on the usage of **hmctl**(8).
 
 
 SEE ALSO

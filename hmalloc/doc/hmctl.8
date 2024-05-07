@@ -31,6 +31,12 @@ allocations.
 Preferably allocate memory on \f[I]node\f[R] for hmalloc family
 allocations.
 .TP
+-P \f[I]nodes\f[R], --preferred-many=\f[I]nodes\f[R]
+Preferably allocate memory on \f[I]nodes\f[R] for hmalloc family
+allocations.
+\f[I]nodes\f[R] are a mask of preferred nodes where the closest node to
+local is considered most preferred.
+.TP
 -?, --help
 Print help message and list of options with description
 .TP
@@ -91,12 +97,10 @@ allocation policy.
 That means it can change the memory policy of \f[B]hmalloc pool\f[R]
 allocated by \f[B]hmalloc APIs\f[R] internally using \f[B]mmap\f[R](2)
 and \f[B]mbind\f[R](2).
-If \f[B]hmctl\f[R](8) is attached and
-\f[B]-m\f[R]/\f[B]\[en]membind\f[R] or
-\f[B]-p\f[R]/\f[B]\[en]preferred\f[R] option is given with a valid NUMA
-node ID, then the \f[B]hmalloc pool\f[R] memory is allocated from the
-target node with the given memory policy based on the usage of
-\f[B]hmctl\f[R](8).
+If \f[B]hmctl\f[R](8) is attached and one of memory policy option is
+given with valid \f[I]node\f[R] or \f[I]nodes\f[R] argument, then the
+\f[B]hmalloc pool\f[R] memory is allocated from the target node with the
+given memory policy based on the usage of \f[B]hmctl\f[R](8).
 .SH SEE ALSO
 .PP
 \f[B]numactl\f[R](8), \f[B]hmalloc\f[R](3)

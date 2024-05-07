@@ -10,11 +10,16 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef MPOL_PREFERRED_MANY
+#define MPOL_PREFERRED_MANY 5
+#endif
+
 struct opts {
     int idx;
     char *exename;
 
     const char *membind;
+    const char *preferred_many;
     int preferred;
 };
 
@@ -28,6 +33,10 @@ static struct argp_option hmctl_options[] = {
      .key = 'p',
      .arg = "node",
      .doc = "Preferably allocate memory on node for hmalloc family allocations"},
+    {.name = "preferred-many",
+     .key = 'P',
+     .arg = "nodes",
+     .doc = "Preferably allocate memory on nodes for hmalloc family allocations"},
     {.name = "membind",
      .key = 'm',
      .arg = "nodes",
@@ -47,6 +56,12 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
     case 'm':
         opts->membind = arg;
         if (opts->preferred > 0)
+            fail_mpol_conflict(state, key);
+        break;
+
+    case 'P':
+        opts->preferred_many = arg;
+        if (opts->membind)
             fail_mpol_conflict(state, key);
         break;
 
@@ -93,6 +108,15 @@ static void setup_child_environ(struct opts *opts) {
         setenv("HMALLOC_MPOL_MODE", buf, 1);
 
         bm = numa_parse_nodestring(opts->membind);
+        if (bm) {
+            snprintf(buf, sizeof(buf), "%lu", *bm->maskp);
+            setenv("HMALLOC_NODEMASK", buf, 1);
+        }
+    } else if (opts->preferred_many) {
+        snprintf(buf, sizeof(buf), "%d", MPOL_PREFERRED_MANY);
+        setenv("HMALLOC_MPOL_MODE", buf, 1);
+
+        bm = numa_parse_nodestring(opts->preferred_many);
         if (bm) {
             snprintf(buf, sizeof(buf), "%lu", *bm->maskp);
             setenv("HMALLOC_NODEMASK", buf, 1);
