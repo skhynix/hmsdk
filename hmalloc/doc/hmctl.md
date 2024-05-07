@@ -36,6 +36,10 @@ OPTIONS
     _nodes_ are a mask of preferred nodes where the closest node to local is
     considered most preferred.
 
+-i _nodes_, \--interleave=_nodes_
+:   Set a memory interleave policy.  Memory will be allocated using round robin
+    on _nodes_.
+
 -?, \--help
 :   Print help message and list of options with description
 

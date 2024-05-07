@@ -37,6 +37,10 @@ allocations.
 \f[I]nodes\f[R] are a mask of preferred nodes where the closest node to
 local is considered most preferred.
 .TP
+-i \f[I]nodes\f[R], --interleave=\f[I]nodes\f[R]
+Set a memory interleave policy.
+Memory will be allocated using round robin on \f[I]nodes\f[R].
+.TP
 -?, --help
 Print help message and list of options with description
 .TP
