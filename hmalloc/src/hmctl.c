@@ -2,6 +2,7 @@
 /* SPDX-License-Identifier: BSD 2-Clause */
 
 #include <argp.h>
+#include <numa.h>
 #include <numaif.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@ struct opts {
     int idx;
     char *exename;
 
-    int membind;
+    const char *membind;
     int preferred;
 };
 
@@ -29,8 +30,8 @@ static struct argp_option hmctl_options[] = {
      .doc = "Preferably allocate memory on node for hmalloc family allocations"},
     {.name = "membind",
      .key = 'm',
-     .arg = "node",
-     .doc = "Only allocate memory from node for hmalloc family allocations"},
+     .arg = "nodes",
+     .doc = "Only allocate memory from nodes for hmalloc family allocations"},
     {NULL},
 };
 
@@ -44,14 +45,14 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
 
     switch (key) {
     case 'm':
-        opts->membind = atoi(arg);
+        opts->membind = arg;
         if (opts->preferred > 0)
             fail_mpol_conflict(state, key);
         break;
 
     case 'p':
         opts->preferred = atoi(arg);
-        if (opts->membind > 0)
+        if (opts->membind)
             fail_mpol_conflict(state, key);
         break;
 
@@ -85,14 +86,17 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
 static void setup_child_environ(struct opts *opts) {
     unsigned long nodemask = 0;
     char buf[4096] = "0";
+    struct bitmask *bm;
 
-    if (opts->membind >= 0) {
+    if (opts->membind) {
         snprintf(buf, sizeof(buf), "%d", MPOL_BIND);
         setenv("HMALLOC_MPOL_MODE", buf, 1);
 
-        nodemask = 1 << opts->membind;
-        snprintf(buf, sizeof(buf), "%ld", nodemask);
-        setenv("HMALLOC_NODEMASK", buf, 1);
+        bm = numa_parse_nodestring(opts->membind);
+        if (bm) {
+            snprintf(buf, sizeof(buf), "%lu", *bm->maskp);
+            setenv("HMALLOC_NODEMASK", buf, 1);
+        }
     } else if (opts->preferred >= 0) {
         /* ignore when --membind is used */
         snprintf(buf, sizeof(buf), "%d", MPOL_PREFERRED);
@@ -115,7 +119,7 @@ int main(int argc, char *argv[]) {
     };
 
     /* default option values */
-    opts.membind = -1;
+    opts.membind = NULL;
     opts.preferred = -1;
 
     argp_parse(&argp, argc, argv, ARGP_IN_ORDER, NULL, &opts);

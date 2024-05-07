@@ -59,6 +59,7 @@ target_include_directories(
   PUBLIC include
   PRIVATE src)
 
+target_link_libraries(${HMCTL} PRIVATE ${NUMA})
 target_link_libraries(${HMALLOC} PRIVATE ${JEMALLOC} ${NUMA})
 
 if(HMALLOC_TEST)
