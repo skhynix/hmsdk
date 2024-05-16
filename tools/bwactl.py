@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2022-2023 SK hynix, Inc.
+# Copyright (c) 2022-2024 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 import argparse
@@ -12,8 +12,8 @@ from enum import Enum, auto
 from iw_ratio import *
 from mlc import *
 
-INTERLEAVE_WEIGHT_DIR = "/sys/kernel/mm/interleave_weight"
-INTERLEAVE_WEIGHT_POSSIBLE_PATH = f"{INTERLEAVE_WEIGHT_DIR}/possible"
+INTERLEAVE_WEIGHT_DIR = "/sys/kernel/mm/mempolicy/weighted_interleave"
+HAS_CPU_NODE_PATH = "/sys/devices/system/node/has_cpu"
 
 
 def check_root_perm():
@@ -75,13 +75,19 @@ def get_node_to_package_map(lstopo_file):
     return nodes
 
 
-def get_possible_numa_nodes():
+def get_numa_nodes_has_cpu():
+    nodes = []
+
     # Read possible nodes to avoid including memory only numa nodes.
-    possible = []
-    with open(f"{INTERLEAVE_WEIGHT_POSSIBLE_PATH}", "r") as f:
-        possible = f.read()[:-1].split(",")
-        possible = list(map(lambda x: int(x), possible))
-    return possible
+    with open(HAS_CPU_NODE_PATH, "r") as f:
+        has_cpu = f.read().strip().split(",")
+    for node in has_cpu:
+        if "-" in node:
+            start, end = map(int, node.split("-"))
+            nodes.extend(range(start, end + 1))
+        else:
+            nodes.append(int(node))
+    return nodes
 
 
 # Parse topology information in python 2-level nested list.
@@ -160,7 +166,7 @@ def display_multi_ratio(matrix, possible, args):
                 print(
                     f"error: package '{pytopo[pack_idx]}' has no cpu numa nodes as in the file below."
                 )
-                print(f"       please check '{INTERLEAVE_WEIGHT_POSSIBLE_PATH}'")
+                print(f"       please check '{HAS_CPU_NODE_PATH}'")
                 sys.exit(-1)
     else:
         nodes = get_node_to_package_map(args.lstopo_file)
@@ -170,8 +176,8 @@ def display_multi_ratio(matrix, possible, args):
     # Write interleave weight value into sysfs file.
     updated_files = []
     for nid in possible:
+        print(f"from node{nid} compute cores:")
         row = matrix[nid]
-        ratio = ""
         nids = []
         weights = []
         for i in range(len(row)):
@@ -187,28 +193,20 @@ def display_multi_ratio(matrix, possible, args):
         if lgcd != 0:
             weights = list(map(lambda x: int(x / lgcd), weights))
         for i in range(len(weights)):
-            ratio += f"{nids[i]}*{weights[i]},"
-        # Remove trailing comma(,)
-        ratio = ratio[:-1]
-
-        print(f"node{nid}: {ratio}")
-
-        if "*0" in ratio:
-            print(f"invalid ratio {ratio}: cpu node without memory is not allowed.")
-            sys.exit(-1)
-
-        filename = f"{INTERLEAVE_WEIGHT_DIR}/node/node{nid}/interleave_weight"
-        with open(filename, "w") as f:
-            f.write(ratio)
-            updated_files.append(filename)
-
-    print("\nBandwidth ratio is successfully updated at")
-    for updated_file in updated_files:
-        print(f"  {updated_file}")
+            if weights[i] == 0:
+                print(
+                    f"invalid ratio {weights[i]} on node{nids[i]}: cpu node without memory is not allowed."
+                )
+                sys.exit(-1)
+            print(f"   echo {weights[i]} > {INTERLEAVE_WEIGHT_DIR}/node{nids[i]}")
+            filename = f"{INTERLEAVE_WEIGHT_DIR}/node{nids[i]}"
+            with open(filename, "w") as f:
+                f.write(f"{weights[i]}")
+                updated_files.append(filename)
 
 
 def check_sysfs():
-    if not os.path.exists(f"{INTERLEAVE_WEIGHT_DIR}/node/node0/interleave_weight"):
+    if not os.path.exists(f"{INTERLEAVE_WEIGHT_DIR}"):
         print(f"error: sysfs not found at {INTERLEAVE_WEIGHT_DIR}")
         sys.exit(-1)
 
@@ -274,7 +272,7 @@ def main():
         for j in range(len(bandwidth_matrix))
     ]
 
-    possible = get_possible_numa_nodes()
+    possible = get_numa_nodes_has_cpu()
 
     # Calculate ratio_matrix based on the given bandwidth_matrix.
     ratio_matrix = get_iw_ratio_matrix(bandwidth_matrix, possible)
