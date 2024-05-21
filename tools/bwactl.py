@@ -48,7 +48,7 @@ def get_node_to_package_map(lstopo_file):
         lines, err = run_lstopo()
     if err != None:
         print(err)
-        return None
+        sys.exit(-1)
     nodes = {}
 
     rp = re.compile("^  Package P#(\d+)")
@@ -135,7 +135,7 @@ def topology_to_pydata(topology):
     return pytopo
 
 
-def display_multi_ratio(matrix, possible, args):
+def generate_topology(possible, args):
     # nodes is a dict that contains
     #   key  : node ID
     #   value: package ID
@@ -171,6 +171,10 @@ def display_multi_ratio(matrix, possible, args):
     else:
         nodes = get_node_to_package_map(args.lstopo_file)
 
+    return nodes
+
+
+def display_multi_ratio(matrix, possible, nodes, args):
     print("Bandwidth ratio for all NUMA nodes")
 
     # Write interleave weight value into sysfs file.
@@ -273,12 +277,13 @@ def main():
     ]
 
     possible = get_numa_nodes_has_cpu()
+    nodes = generate_topology(possible, args)
 
     # Calculate ratio_matrix based on the given bandwidth_matrix.
-    ratio_matrix = get_iw_ratio_matrix(bandwidth_matrix, possible)
+    ratio_matrix = get_iw_ratio_matrix(bandwidth_matrix, possible, nodes)
 
     # Print result to stdout and sysfs
-    display_multi_ratio(ratio_matrix, possible, args)
+    display_multi_ratio(ratio_matrix, possible, nodes, args)
 
 
 if __name__ == "__main__":

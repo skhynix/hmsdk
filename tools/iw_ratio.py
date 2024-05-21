@@ -14,7 +14,7 @@ def list_gcd(data):
     return lgcd
 
 
-def get_iw_ratio(data, soft_max=SOFT_MAX_RATIO_VAL):
+def get_iw_ratio(data, nodes, nid, soft_max=SOFT_MAX_RATIO_VAL):
     new_data = [0] * len(data)
     quit = False
 
@@ -22,11 +22,13 @@ def get_iw_ratio(data, soft_max=SOFT_MAX_RATIO_VAL):
         if max(data) <= soft_max:
             break
         for i in range(len(data)):
-            new_data[i] = data[i] / 2
-            # new_data[i] != 0 check is to handle when cpu node doesn't have memory.
-            if new_data[i] != 0 and new_data[i] <= 1:
-                quit = True
-                break
+            # Calculate ratio when they are in the same package.
+            if nodes[i] == nodes[nid]:
+                new_data[i] = data[i] / 2
+                # new_data[i] != 0 check is to handle when cpu node doesn't have memory.
+                if new_data[i] != 0 and new_data[i] <= 1:
+                    quit = True
+                    break
         if quit:
             break
         data = new_data[:]
@@ -39,8 +41,9 @@ def get_iw_ratio(data, soft_max=SOFT_MAX_RATIO_VAL):
     return data
 
 
-def get_iw_ratio_matrix(bw_matrix, possible):
+def get_iw_ratio_matrix(bw_matrix, possible, nodes):
     ratio_matrix = [0] * len(bw_matrix)
+
     for nid in possible:
-        ratio_matrix[nid] = get_iw_ratio(bw_matrix[nid])
+        ratio_matrix[nid] = get_iw_ratio(bw_matrix[nid], nodes, nid)
     return ratio_matrix
