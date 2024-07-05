@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2023 SK hynix, Inc.
+# Copyright (c) 2023-2024 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 import argparse
@@ -21,26 +21,30 @@ def parse_argument():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-d",
-        "--dram_nodes",
-        dest="dram_nodes",
-        nargs="+",
+        "--demote",
+        dest="migrate_cold",
+        action="append",
+        nargs=2,
+        metavar=("SRC", "DEST"),
         default=[],
-        help="NUMA node for DRAM. Multiple NUMA nodes can be provided.",
+        help="source and destination NUMA nodes for demotion.",
     )
     parser.add_argument(
-        "-c",
-        "--cxl_nodes",
-        dest="cxl_nodes",
-        nargs="+",
+        "-p",
+        "--promote",
+        dest="migrate_hot",
+        action="append",
+        nargs=2,
+        metavar=("SRC", "DEST"),
         default=[],
-        help="NUMA node for CXL. Multiple NUMA nodes can be provided.",
+        help="source and destination NUMA nodes for promotion.",
     )
     parser.add_argument(
         "-g",
         "--global",
         dest="nofilter",
         action="store_true",
-        help="Apply 2-tier migration schemes globally not limited to PIDs under 'hmsdk' cgroup.",
+        help="Apply tiered migration schemes globally not limited to PIDs under 'hmsdk' cgroup.",
     )
     parser.add_argument(
         "-o", "--output", dest="output", default=None, help="Set the output json file."
@@ -80,9 +84,9 @@ def main():
     common_damos_opts = f"{damos_sz_region}"
     if not args.nofilter:
         common_damos_opts += f" {damos_filter}"
-    for dram_node in args.dram_nodes:
-        numa_node = f"--numa_node {dram_node}"
-        damos_action = f"--damos_action demote"
+    for src_node, dest_node in args.migrate_cold:
+        numa_node = f"--numa_node {src_node}"
+        damos_action = f"--damos_action migrate_cold {dest_node}"
         damos_access_rate = "--damos_access_rate 0% 0%"
         damos_age = "--damos_age 30s max"
         damos_quotas = "--damos_quotas 1s 50G 20s 0 0 1%"
@@ -90,13 +94,13 @@ def main():
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
         if not is_valid_node(node_json):
-            print(f"error: DRAM node {dram_node} is invalid")
+            print(f"error: node {src_node} is invalid")
             sys.exit(1)
         node_jsons.append(node_json)
 
-    for cxl_node in args.cxl_nodes:
-        numa_node = f"--numa_node {cxl_node}"
-        damos_action = f"--damos_action promote"
+    for src_node, dest_node in args.migrate_hot:
+        numa_node = f"--numa_node {src_node}"
+        damos_action = f"--damos_action migrate_hot {dest_node}"
         damos_access_rate = "--damos_access_rate 5% 100%"
         damos_age = "--damos_age 0 max"
         damos_quotas = "--damos_quotas 2s 50G 20s 0 0 1%"
@@ -104,7 +108,7 @@ def main():
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
         if not is_valid_node(node_json):
-            print(f"error: CXL node {cxl_node} is invalid")
+            print(f"error: node {src_node} is invalid")
             sys.exit(1)
         node_jsons.append(node_json)
 
