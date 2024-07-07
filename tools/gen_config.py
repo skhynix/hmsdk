@@ -90,7 +90,8 @@ def main():
         damos_access_rate = "--damos_access_rate 0% 0%"
         damos_age = "--damos_age 30s max"
         damos_quotas = "--damos_quotas 1s 50G 20s 0 0 1%"
-        cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_access_rate} {damos_age} {damos_quotas}"
+        damos_young_filter = "--damos_filter young matching"
+        cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} {damos_access_rate} {damos_age} {damos_quotas}"
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
         if not is_valid_node(node_json):
@@ -104,7 +105,8 @@ def main():
         damos_access_rate = "--damos_access_rate 5% 100%"
         damos_age = "--damos_age 0 max"
         damos_quotas = "--damos_quotas 2s 50G 20s 0 0 1%"
-        cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_access_rate} {damos_age} {damos_quotas}"
+        damos_young_filter = "--damos_filter young nomatching"
+        cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} {damos_access_rate} {damos_age} {damos_quotas}"
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
         if not is_valid_node(node_json):
