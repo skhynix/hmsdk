@@ -7,6 +7,7 @@ import json
 import os
 import subprocess as sp
 import sys
+import yaml
 
 # common options
 monitoring_intervals = "--monitoring_intervals 100ms 2s 20s"
@@ -119,7 +120,7 @@ def main():
     for node_json in node_jsons:
         nodes["kdamonds"].append(node_json["kdamonds"][0])
 
-    config = json.dumps(nodes, indent=4)
+    config = yaml.dump(nodes, default_flow_style=False, sort_keys=False)
     if args.output:
         with open(args.output, "w") as f:
             f.write(config + "\n")
