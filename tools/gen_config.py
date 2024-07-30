@@ -7,6 +7,7 @@ import json
 import os
 import subprocess as sp
 import sys
+
 import yaml
 
 # common options
@@ -71,6 +72,13 @@ def parent_dir_of_file(file):
     return os.path.dirname(os.path.dirname(os.path.abspath(file)))
 
 
+def check_src_node(handled_node, src_node):
+    if src_node in handled_node:
+        print(f"error: node {src_node} cannot be used multiple times for source node")
+        sys.exit(1)
+    handled_node.add(src_node)
+
+
 def main():
     args = parse_argument()
 
@@ -83,9 +91,12 @@ def main():
 
     common_opts = f"{monitoring_intervals} {monitoring_nr_regions_range}"
     common_damos_opts = f"{damos_sz_region}"
+    handled_node = set()
     if not args.nofilter:
         common_damos_opts += f" {damos_filter}"
+
     for src_node, dest_node in args.migrate_cold:
+        check_src_node(handled_node, src_node)
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_cold {dest_node}"
         damos_access_rate = "--damos_access_rate 0% 0%"
@@ -101,6 +112,7 @@ def main():
         node_jsons.append(node_json)
 
     for src_node, dest_node in args.migrate_hot:
+        check_src_node(handled_node, src_node)
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_hot {dest_node}"
         damos_access_rate = "--damos_access_rate 5% 100%"
