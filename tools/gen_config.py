@@ -64,19 +64,29 @@ def run_command(cmd):
         return stdout_lines
 
 
-def is_valid_node(node_json):
-    return len(node_json["kdamonds"][0]["contexts"][0]["targets"][0]["regions"]) > 0
-
-
 def parent_dir_of_file(file):
     return os.path.dirname(os.path.dirname(os.path.abspath(file)))
 
 
-def check_src_node(handled_node, src_node):
-    if src_node in handled_node:
-        print(f"error: node {src_node} cannot be used multiple times for source node")
-        sys.exit(1)
-    handled_node.add(src_node)
+class CheckNodes:
+    def __init__(self):
+        self.handled_node = set()
+
+    def __call__(self, src_node, dest_node, node_json):
+        if src_node in self.handled_node:
+            return f"node {src_node} cannot be used multiple times for source node"
+        self.handled_node.add(src_node)
+
+        if src_node == dest_node:
+            return f"node {src_node} cannot be used for both SRC and DEST node"
+
+        nr_regions = len(
+            node_json["kdamonds"][0]["contexts"][0]["targets"][0]["regions"]
+        )
+        if nr_regions <= 0:
+            return f"node {src_node} has no valid regions"
+
+        return None
 
 
 def main():
@@ -91,12 +101,12 @@ def main():
 
     common_opts = f"{monitoring_intervals} {monitoring_nr_regions_range}"
     common_damos_opts = f"{damos_sz_region}"
-    handled_node = set()
     if not args.nofilter:
         common_damos_opts += f" {damos_filter}"
 
+    check_nodes = CheckNodes()
+
     for src_node, dest_node in args.migrate_cold:
-        check_src_node(handled_node, src_node)
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_cold {dest_node}"
         damos_access_rate = "--damos_access_rate 0% 0%"
@@ -106,13 +116,13 @@ def main():
         cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} {damos_access_rate} {damos_age} {damos_quotas}"
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
-        if not is_valid_node(node_json):
-            print(f"error: node {src_node} is invalid")
-            sys.exit(1)
         node_jsons.append(node_json)
+        err = check_nodes(src_node, dest_node, node_json)
+        if err:
+            print(f"error: {err}")
+            sys.exit(1)
 
     for src_node, dest_node in args.migrate_hot:
-        check_src_node(handled_node, src_node)
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_hot {dest_node}"
         damos_access_rate = "--damos_access_rate 5% 100%"
@@ -122,10 +132,11 @@ def main():
         cmd = f"{damo} fmt_json {numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} {damos_access_rate} {damos_age} {damos_quotas}"
         json_str = run_command(cmd)
         node_json = json.loads(json_str)
-        if not is_valid_node(node_json):
-            print(f"error: node {src_node} is invalid")
-            sys.exit(1)
         node_jsons.append(node_json)
+        err = check_nodes(src_node, dest_node, node_json)
+        if err:
+            print(f"error: {err}")
+            sys.exit(1)
 
     nodes = {"kdamonds": []}
 
