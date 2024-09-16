@@ -14,7 +14,9 @@ HMSDK consists of multiple git submodules so please download it as follows.
 
 ## News
 
-- 2024-07-03: HMSDK v2.0 kernel patches have landed into upstream Linux kernel (will be available from v6.11)
+- 2024-09-16: HMSDK v3.0 is released
+  - Fully aligned with various open source projects, which allows us drop local patches
+- 2024-07-03: HMSDK v2.0 kernel patches have landed into upstream Linux kernel (available from v6.11)
   - 7 commits including [migration core logic](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=b51820ebea656be3b48bb16dcdc5ad3f203c4fd7) - [cover letter](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=a00ce85af2a1be494d3b0c9457e8e81cdcce2a89)
 - 2024-04-19: numactl supports [--weighted-interleave](https://github.com/numactl/numactl/commit/b67fb88e77b3c200b0e300e2e0edc4f66c1d9ea5) option
 - 2024-02-22: HMSDK v1.1 kernel patches have landed into upstream Linux kernel (available from v6.9)
