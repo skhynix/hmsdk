@@ -280,40 +280,133 @@ TEST_CASE("hmmap/hmunmap") {
 }
 
 TEST_CASE("mbind") {
-    /* skip this test when the system has a single numa node */
+    int policy;
+    unsigned long nodemask;
+    char *env;
+
+    int hmctl_policy = MPOL_DEFAULT;
+    unsigned long hmctl_nodemask = 0;
+
+    struct bitmask *mask = numa_get_mems_allowed();
+    char bm[1024] = "0";
+    snprintf(bm, sizeof(bm), "%ld", *mask->maskp);
+
+    /* skip this test when the system has no numa node */
     int maxnode = numa_max_node() + 2;
-    if (maxnode < 3)
+    if (maxnode < 2)
         return;
 
     void *new_addr = nullptr;
     size_t size = 0x1fffffffUL; /* 500 MiB */
 
-    setenv("HMALLOC_NODEMASK", "2", 1);  /* nodemask 2 means node 1 */
-    setenv("HMALLOC_MPOL_MODE", "2", 1); /* MPOL_BIND is 2 */
-    update_env();
+    SECTION("MPOL_MBIND") {
+        setenv("HMALLOC_MPOL_MODE", "2", 1); /* MPOL_BIND is 2 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
 
-    new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
-    REQUIRE(new_addr);
-    memset(new_addr, 0, size);
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
 
-    SECTION("success") {
-        int nid = 1;
-        unsigned long nodemask = 1 << nid;
-        CHECK(0 == mbind(new_addr, size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_STRICT));
+        env = getenv("HMALLOC_MPOL_MODE");
+        if (env)
+            hmctl_policy = atoi(env);
+
+        env = getenv("HMALLOC_NODEMASK");
+        if (env)
+            hmctl_nodemask = atol(env);
+        CHECK(0 == get_mempolicy(&policy, &nodemask, maxnode, new_addr, MPOL_F_ADDR));
+        CHECK(policy == hmctl_policy);
+        CHECK(nodemask == hmctl_nodemask);
+        CHECK(0 == munmap(new_addr, size));
     }
+    SECTION("MPOL_PREFERRED") {
+        /* extract lsb node in the allowed node*/
+        unsigned long lsb_node = *mask->maskp & -(*mask->maskp);
+        char lsb_bm[1024] = "0";
+        snprintf(lsb_bm, sizeof(lsb_bm), "%ld", lsb_node);
 
-    SECTION("failure") {
-        SECTION("incorrect nid") {
-            int nid = 0;
-            unsigned long nodemask = 1 << nid;
-            CHECK(-1 == mbind(new_addr, size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_STRICT));
-            CHECK(errno == EIO);
-        }
-        SECTION("incorrect mpol") {
-            int nid = 1;
-            unsigned long nodemask = 1 << nid;
-            CHECK(-1 != mbind(new_addr, size, MPOL_PREFERRED, &nodemask, maxnode, MPOL_MF_STRICT));
-        }
+        setenv("HMALLOC_MPOL_MODE", "1", 1); /* MPOL_PREFERRED is 1 */
+        setenv("HMALLOC_NODEMASK", lsb_bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        env = getenv("HMALLOC_MPOL_MODE");
+        if (env)
+            hmctl_policy = atoi(env);
+
+        env = getenv("HMALLOC_NODEMASK");
+        if (env)
+            hmctl_nodemask = atol(env);
+        CHECK(0 == get_mempolicy(&policy, &nodemask, maxnode, new_addr, MPOL_F_ADDR));
+        CHECK(policy == hmctl_policy);
+        CHECK(nodemask == hmctl_nodemask);
+        CHECK(0 == munmap(new_addr, size));
     }
-    CHECK(0 == munmap(new_addr, size));
+    SECTION("MPOL_PREFERRED_MANY") {
+        setenv("HMALLOC_MPOL_MODE", "5", 1); /* MPOL_PREFERRED_MANY is 5 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        env = getenv("HMALLOC_MPOL_MODE");
+        if (env)
+            hmctl_policy = atoi(env);
+
+        env = getenv("HMALLOC_NODEMASK");
+        if (env)
+            hmctl_nodemask = atol(env);
+        CHECK(0 == get_mempolicy(&policy, &nodemask, maxnode, new_addr, MPOL_F_ADDR));
+        CHECK(policy == hmctl_policy);
+        CHECK(nodemask == hmctl_nodemask);
+        CHECK(0 == munmap(new_addr, size));
+    }
+    SECTION("MPOL_INTERLEAVE") {
+        setenv("HMALLOC_MPOL_MODE", "3", 1); /* MPOL_INTERLEAVE is 3 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        env = getenv("HMALLOC_MPOL_MODE");
+        if (env)
+            hmctl_policy = atoi(env);
+
+        env = getenv("HMALLOC_NODEMASK");
+        if (env)
+            hmctl_nodemask = atol(env);
+        CHECK(0 == get_mempolicy(&policy, &nodemask, maxnode, new_addr, MPOL_F_ADDR));
+        CHECK(policy == hmctl_policy);
+        CHECK(nodemask == hmctl_nodemask);
+        CHECK(0 == munmap(new_addr, size));
+    }
+    SECTION("MPOL_WEIGHTED_INTERLEAVE") {
+        setenv("HMALLOC_MPOL_MODE", "6", 1); /* MPOL_WEIGHTED_INTERLEAVE is 6 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        env = getenv("HMALLOC_MPOL_MODE");
+        if (env)
+            hmctl_policy = atoi(env);
+
+        env = getenv("HMALLOC_NODEMASK");
+        if (env)
+            hmctl_nodemask = atol(env);
+        CHECK(0 == get_mempolicy(&policy, &nodemask, maxnode, new_addr, MPOL_F_ADDR));
+        CHECK(policy == hmctl_policy);
+        CHECK(nodemask == hmctl_nodemask);
+        CHECK(0 == munmap(new_addr, size));
+    }
 }
