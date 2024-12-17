@@ -10,6 +10,7 @@
 #include <jemalloc/jemalloc.h>
 #include <numa.h>
 #include <numaif.h>
+#include <strings.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <vector>
@@ -288,7 +289,17 @@ TEST_CASE("mbind") {
     void *new_addr = nullptr;
     size_t size = 0x1fffffffUL; /* 500 MiB */
 
-    setenv("HMALLOC_NODEMASK", "2", 1);  /* nodemask 2 means node 1 */
+    struct bitmask *mask = numa_get_mems_allowed();
+    unsigned long nodemask = *mask->maskp;
+    unsigned long testnode = 1 << (ffs(nodemask) - 1);
+
+    /* clear testnode for later mbind test */
+    nodemask = nodemask & ~testnode;
+
+    char bm[1024] = "0";
+    snprintf(bm, sizeof(bm), "%lu", nodemask);
+
+    setenv("HMALLOC_NODEMASK", bm, 1);
     setenv("HMALLOC_MPOL_MODE", "2", 1); /* MPOL_BIND is 2 */
     update_env();
 
@@ -297,21 +308,18 @@ TEST_CASE("mbind") {
     memset(new_addr, 0, size);
 
     SECTION("success") {
-        int nid = 1;
-        unsigned long nodemask = 1 << nid;
         CHECK(0 == mbind(new_addr, size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_STRICT));
     }
 
     SECTION("failure") {
         SECTION("incorrect nid") {
-            int nid = 0;
-            unsigned long nodemask = 1 << nid;
-            CHECK(-1 == mbind(new_addr, size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_STRICT));
+            /* skip incorrect nid test when the system has an single numa node */
+            if (maxnode == 3)
+                return;
+            CHECK(-1 == mbind(new_addr, size, MPOL_BIND, &testnode, maxnode, MPOL_MF_STRICT));
             CHECK(errno == EIO);
         }
         SECTION("incorrect mpol") {
-            int nid = 1;
-            unsigned long nodemask = 1 << nid;
             CHECK(-1 != mbind(new_addr, size, MPOL_PREFERRED, &nodemask, maxnode, MPOL_MF_STRICT));
         }
     }
