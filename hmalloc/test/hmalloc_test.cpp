@@ -12,8 +12,17 @@
 #include <numaif.h>
 #include <strings.h>
 #include <sys/mman.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 #include <vector>
+
+#ifndef MPOL_PREFERRED_MANY
+#define MPOL_PREFERRED_MANY 5
+#endif
+
+#ifndef MPOL_WEIGHTED_INTERLEAVE
+#define MPOL_WEIGHTED_INTERLEAVE 6
+#endif
 
 extern "C" {
 void update_env(void);
@@ -50,6 +59,15 @@ static void hmalloc_test(const std::vector<size_t> &sizes) {
 
     for (auto &ptr : v)
         hfree(ptr);
+}
+
+static void mempolicy_test(int policy, unsigned long nodemask, int maxnode, void *addr) {
+    int hpolicy;
+    unsigned long hnodemask;
+
+    CHECK(0 == get_mempolicy(&hpolicy, &hnodemask, maxnode, addr, MPOL_F_ADDR));
+    CHECK(policy == hpolicy);
+    CHECK(nodemask == hnodemask);
 }
 
 TEST_CASE("hmalloc") {
@@ -291,37 +309,92 @@ TEST_CASE("mbind") {
 
     struct bitmask *mask = numa_get_mems_allowed();
     unsigned long nodemask = *mask->maskp;
-    unsigned long testnode = 1 << (ffs(nodemask) - 1);
-
-    /* clear testnode for later mbind test */
-    nodemask = nodemask & ~testnode;
 
     char bm[1024] = "0";
     snprintf(bm, sizeof(bm), "%lu", nodemask);
 
-    setenv("HMALLOC_NODEMASK", bm, 1);
-    setenv("HMALLOC_MPOL_MODE", "2", 1); /* MPOL_BIND is 2 */
-    update_env();
+    SECTION("MPOL_BIND") {
+        setenv("HMALLOC_MPOL_MODE", "2", 1); /* MPOL_BIND is 2 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
 
-    new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
-    REQUIRE(new_addr);
-    memset(new_addr, 0, size);
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
 
-    SECTION("success") {
-        CHECK(0 == mbind(new_addr, size, MPOL_BIND, &nodemask, maxnode, MPOL_MF_STRICT));
+        mempolicy_test(MPOL_BIND, nodemask, maxnode, new_addr);
+        CHECK(0 == munmap(new_addr, size));
     }
 
-    SECTION("failure") {
-        SECTION("incorrect nid") {
-            /* skip incorrect nid test when the system has an single numa node */
-            if (maxnode == 3)
-                return;
-            CHECK(-1 == mbind(new_addr, size, MPOL_BIND, &testnode, maxnode, MPOL_MF_STRICT));
-            CHECK(errno == EIO);
-        }
-        SECTION("incorrect mpol") {
-            CHECK(-1 != mbind(new_addr, size, MPOL_PREFERRED, &nodemask, maxnode, MPOL_MF_STRICT));
-        }
+    SECTION("MPOL_PREFERRED") {
+        /* MPOL_PREFERRED accepts only a single node so pick lsb node only */
+        unsigned long testnode = 1 << (ffs(nodemask) - 1);
+        snprintf(bm, sizeof(bm), "%lu", testnode);
+
+        setenv("HMALLOC_MPOL_MODE", "1", 1); /* MPOL_PREFERRED is 1 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        mempolicy_test(MPOL_PREFERRED, testnode, maxnode, new_addr);
+        CHECK(0 == munmap(new_addr, size));
     }
-    CHECK(0 == munmap(new_addr, size));
+
+    SECTION("MPOL_PREFERRED_MANY") {
+        setenv("HMALLOC_MPOL_MODE", "5", 1); /* MPOL_PREFERRED_MANY is 5 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        mempolicy_test(MPOL_PREFERRED_MANY, nodemask, maxnode, new_addr);
+        CHECK(0 == munmap(new_addr, size));
+    }
+    SECTION("MPOL_INTERLEAVE") {
+        setenv("HMALLOC_MPOL_MODE", "3", 1); /* MPOL_INTERLEAVE is 3 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        mempolicy_test(MPOL_INTERLEAVE, nodemask, maxnode, new_addr);
+        CHECK(0 == munmap(new_addr, size));
+    }
+    SECTION("MPOL_WEIGHTED_INTERLEAVE") {
+        struct utsname buffer;
+        int major, minor;
+
+        if (uname(&buffer) != 0) {
+            perror("uname");
+            return;
+        }
+
+        /*
+         * MPOL_WEIGHTED_INTERLEAVE is supported from kernel v6.9 so skip this test
+         * if kernel version is lower than v6.9.
+         */
+        sscanf(buffer.release, "%d.%d", &major, &minor);
+        if (major < 6 || (major == 6 && minor < 9)) {
+            CHECK("SKIP: not supported kernel version");
+            return;
+        }
+
+        setenv("HMALLOC_MPOL_MODE", "6", 1); /* MPOL_WEIGHTED_INTERLEAVE is 6 */
+        setenv("HMALLOC_NODEMASK", bm, 1);
+        update_env();
+
+        new_addr = extent_alloc(nullptr, new_addr, size, 0, nullptr, nullptr, 0);
+        REQUIRE(new_addr);
+        memset(new_addr, 0, size);
+
+        mempolicy_test(MPOL_WEIGHTED_INTERLEAVE, nodemask, maxnode, new_addr);
+        CHECK(0 == munmap(new_addr, size));
+    }
 }
