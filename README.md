@@ -14,6 +14,7 @@ HMSDK consists of multiple git submodules so please download it as follows.
 
 ## News
 
+- 2025-01-21: libnuma supports weighted-interleaved allocation APIs
 - 2024-09-16: HMSDK v3.0 is released
   - Fully aligned with various open source projects, which allows us drop local patches
 - 2024-07-03: HMSDK v2.0 kernel patches have landed into upstream Linux kernel (available from v6.11)
