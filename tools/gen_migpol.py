@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2023-2024 SK hynix, Inc.
+# Copyright (c) 2023-2025 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 import argparse
@@ -54,6 +54,11 @@ def parse_argument():
     return parser.parse_args()
 
 
+def make_opt(option, value, num_schemes):
+    values = " ".join(str(value) for _ in range(num_schemes))
+    return f"{option} {values}"
+
+
 def run_command(cmd):
     with sp.Popen(cmd.split(), stdout=sp.PIPE, stderr=sp.PIPE) as p:
         stdout, stderr = p.communicate()
@@ -72,19 +77,20 @@ class CheckNodes:
     def __init__(self):
         self.handled_node = set()
 
-    def __call__(self, src_node, dest_node, node_json):
-        if src_node in self.handled_node:
-            return f"node {src_node} cannot be used multiple times for source node"
-        self.handled_node.add(src_node)
+    def __call__(self, nodes, node_json):
+        for src_node, dest_node in nodes:
+            if src_node == dest_node:
+                return f"node {src_node} cannot be used for both SRC and DEST node"
 
-        if src_node == dest_node:
-            return f"node {src_node} cannot be used for both SRC and DEST node"
+            if src_node in self.handled_node:
+                return f"node {src_node} cannot be used multiple times for source node"
+            self.handled_node.add(src_node)
 
-        nr_regions = len(
-            node_json["kdamonds"][0]["contexts"][0]["targets"][0]["regions"]
-        )
-        if nr_regions <= 0:
-            return f"node {src_node} has no valid regions"
+        for kdamond in node_json["kdamonds"]:
+            nr_regions = len(kdamond["contexts"][0]["targets"][0]["regions"])
+
+            if nr_regions <= 0:
+                return f"node {src_node} has no valid regions"
 
         return None
 
@@ -97,6 +103,7 @@ def main():
         sys.exit(1)
 
     damo = parent_dir_of_file(__file__) + "/damo/damo"
+    nodes = []
     node_jsons = []
 
     common_opts = f"{monitoring_intervals} {monitoring_nr_regions_range}"
@@ -105,53 +112,64 @@ def main():
         common_damos_opts += f" {damos_filter}"
 
     check_nodes = CheckNodes()
+    cmd_migrate_hot = []
+    cmd_migrate_cold = []
+    num_schemes = 0
 
     for src_node, dest_node in args.migrate_cold:
+        nodes.append((src_node, dest_node))
+        num_schemes += 1
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_cold {dest_node}"
         damos_access_rate = "--damos_access_rate 0% 0%"
         damos_age = "--damos_age 30s max"
         damos_quotas = "--damos_quotas 1s 50G 20s 0 0 1%"
         damos_young_filter = "--damos_filter young matching"
-        cmd = (
-            f"{damo} args damon --format json {numa_node} {common_opts} "
-            f"{damos_action} {common_damos_opts} {damos_young_filter} "
+        cmd_migrate_cold.append(
+            f"{numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} "
             f"{damos_access_rate} {damos_age} {damos_quotas}"
         )
-        json_str = run_command(cmd)
-        node_json = json.loads(json_str)
-        node_jsons.append(node_json)
-        err = check_nodes(src_node, dest_node, node_json)
-        if err:
-            print(f"error: {err}")
-            sys.exit(1)
 
     for src_node, dest_node in args.migrate_hot:
+        nodes.append((src_node, dest_node))
+        num_schemes += 1
         numa_node = f"--numa_node {src_node}"
         damos_action = f"--damos_action migrate_hot {dest_node}"
         damos_access_rate = "--damos_access_rate 5% 100%"
         damos_age = "--damos_age 0 max"
         damos_quotas = "--damos_quotas 2s 50G 20s 0 0 1%"
         damos_young_filter = "--damos_filter young nomatching"
-        cmd = (
-            f"{damo} args damon --format json {numa_node} {common_opts} "
-            f"{damos_action} {common_damos_opts} {damos_young_filter} "
+        cmd_migrate_hot.append(
+            f"{numa_node} {common_opts} {damos_action} {common_damos_opts} {damos_young_filter} "
             f"{damos_access_rate} {damos_age} {damos_quotas}"
         )
-        json_str = run_command(cmd)
-        node_json = json.loads(json_str)
-        node_jsons.append(node_json)
-        err = check_nodes(src_node, dest_node, node_json)
-        if err:
-            print(f"error: {err}")
-            sys.exit(1)
 
-    nodes = {"kdamonds": []}
+    command = f"{damo} args damon --format json "
+    for cmd in cmd_migrate_cold:
+        command = f"{command} {cmd}"
+    for cmd in cmd_migrate_hot:
+        command = f"{command} {cmd}"
 
-    for node_json in node_jsons:
-        nodes["kdamonds"].append(node_json["kdamonds"][0])
+    if not args.nofilter:
+        nr_filters = make_opt("--damos_nr_filters", 2, num_schemes)
+    else:
+        nr_filters = make_opt("--damos_nr_filters", 1, num_schemes)
+    nr_targets = make_opt("--nr_targets", 1, num_schemes)
+    nr_schemes = make_opt("--nr_schemes", 1, num_schemes)
+    nr_ctxs = make_opt("--nr_ctxs", 1, num_schemes)
 
-    config = yaml.dump(nodes, default_flow_style=False, sort_keys=False)
+    command = f"{command} {nr_filters} {nr_targets} {nr_schemes} {nr_ctxs}"
+
+    # run 'damo args damon' and return json type
+    json_str = run_command(command)
+    # convert json string to 'dict'
+    node_json = json.loads(json_str)
+    err = check_nodes(nodes, node_json)
+    if err:
+        print(f"error: {err}")
+        sys.exit(1)
+
+    config = yaml.dump(node_json, default_flow_style=False, sort_keys=False)
     if args.output:
         with open(args.output, "w") as f:
             f.write(config + "\n")
