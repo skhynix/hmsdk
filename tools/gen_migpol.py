@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD 2-Clause
 
 import argparse
+import copy
 import json
 import os
 import subprocess as sp
@@ -59,6 +60,14 @@ def parse_argument():
         help="Apply tiered migration schemes globally not limited to PIDs under 'hmsdk' cgroup.",
     )
     parser.add_argument(
+        "-s",
+        "--region-max-size",
+        type=parse_size,
+        default=None,
+        help="Maximum region size (e.g. 1G, 512M). Regions larger than this will be split.",
+    )
+
+    parser.add_argument(
         "-o", "--output", dest="output", default=None, help="Set the output json file."
     )
     return parser.parse_args()
@@ -67,6 +76,51 @@ def parse_argument():
 def make_opt(option, value, num_schemes):
     values = " ".join(str(value) for _ in range(num_schemes))
     return f"{option} {values}"
+
+
+def parse_size(size_str):
+    units = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
+    size_str = size_str.strip().lower()
+    if size_str[-1] in units:
+        return int(float(size_str[:-1]) * units[size_str[-1]])
+    else:
+        return int(size_str)
+
+
+def split_region(region, max_size):
+    regions = []
+    unsplit_regions = []
+    for r in region:
+        start = comma_addr_to_int(r["start"])
+        end = comma_addr_to_int(r["end"])
+        if end - start > max_size:
+            # Split the region into chunks of max_size
+            while start < end:
+                sub_end = min(start + max_size, end)
+                regions.append(
+                    [
+                        {
+                            "start": int_to_comma_addr(start),
+                            "end": int_to_comma_addr(sub_end),
+                        }
+                    ]
+                )
+                start = sub_end
+        else:
+            unsplit_regions.append(r)
+
+    if unsplit_regions:
+        regions.append(unsplit_regions)
+
+    return regions
+
+
+def comma_addr_to_int(addr):
+    return int(addr.replace(",", ""))
+
+
+def int_to_comma_addr(addr):
+    return f"{addr:,}"
 
 
 def run_command(cmd):
@@ -182,6 +236,18 @@ def main():
     if err:
         print(f"error: {err}")
         sys.exit(1)
+
+    if args.region_max_size is not None:
+        new_kdamonds = []
+        for kdamond in node_json["kdamonds"]:
+            region = kdamond["contexts"][0]["targets"][0]["regions"]
+            split = split_region(region, args.region_max_size)
+            for region in split:
+                new_kdamond = copy.deepcopy(kdamond)
+                new_kdamond["contexts"][0]["targets"][0]["regions"] = region
+                new_kdamonds.append(new_kdamond)
+
+        node_json["kdamonds"] = new_kdamonds
 
     config = yaml.dump(node_json, default_flow_style=False, sort_keys=False)
     if args.output:
