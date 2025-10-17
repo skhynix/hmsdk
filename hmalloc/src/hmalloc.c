@@ -1,4 +1,4 @@
-/* Copyright (c) 2024 SK hynix, Inc. */
+/* Copyright (c) 2024-2025 SK hynix, Inc. */
 /* SPDX-License-Identifier: BSD 2-Clause */
 
 #include "env.h"
@@ -82,7 +82,7 @@ __attribute__((constructor)) void hmalloc_init(void) {
     update_env();
 
     if (use_jemalloc) {
-        maxnode = numa_max_node() + 2;
+        maxnode = numa_max_possible_node();
         hooks = &extent_hooks;
         err = mallctl("arenas.create", &arena_index, &unsigned_size, (void *)&hooks,
                       sizeof(extent_hooks_t *));

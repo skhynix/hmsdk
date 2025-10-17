@@ -1,4 +1,4 @@
-/* Copyright (c) 2024 SK hynix, Inc. */
+/* Copyright (c) 2024-2025 SK hynix, Inc. */
 /* SPDX-License-Identifier: BSD 2-Clause */
 
 #include "catch.hpp"
@@ -300,7 +300,7 @@ TEST_CASE("hmmap/hmunmap") {
 
 TEST_CASE("mbind") {
     /* skip this test when the system has a single numa node */
-    int maxnode = numa_max_node() + 2;
+    int maxnode = numa_max_possible_node();
     if (maxnode < 3)
         return;
 
