@@ -7,3 +7,6 @@
 [submodule "damo"]
 	path = tools/damo
 	url = https://github.com/skhynix/damo.git
+[submodule "tools/bwprof/pcm"]
+	path = tools/bwprof/pcm
+	url = https://github.com/intel/pcm.git
