@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Copyright (c) 2022-2023 SK hynix, Inc.
+# Copyright (c) 2022-2025 SK hynix, Inc.
 # SPDX-License-Identifier: BSD 2-Clause
 
 import os
@@ -27,7 +27,7 @@ class MLC:
         self.work_dir = os.path.dirname(os.path.realpath(__file__))
         self.mlc = self.work_dir + "/mlc/Linux/mlc"
         if os.path.isfile(self.mlc) == False:
-            mlc_filename = "mlc_v3.11.tgz"
+            mlc_filename = "mlc_v3.12.tgz"
             self.mlc_dir = self.work_dir + "/mlc"
             if os.path.isdir(self.mlc_dir):
                 shutil.rmtree(self.mlc_dir)
@@ -36,7 +36,7 @@ class MLC:
             print("Download MLC...")
             cmd = (
                 f"wget -P {self.mlc_dir} "
-                f"https://downloadmirror.intel.com/793041/{mlc_filename} "
+                f"https://downloadmirror.intel.com/866182/{mlc_filename} "
                 "--no-check-certificate"
             )
             out = run_check_output(cmd)
