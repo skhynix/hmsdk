@@ -42,6 +42,16 @@ def parse_argument():
         help="source and destination NUMA nodes for promotion.",
     )
     parser.add_argument(
+        "-m",
+        "--migrate",
+        action="append",
+        nargs=2,
+        metavar=("FAST_TIER", "SLOW_TIER"),
+        default=[],
+        help="migration between fast and slow tier NUMA nodes.",
+    )
+
+    parser.add_argument(
         "-g",
         "--global",
         dest="nofilter",
@@ -115,6 +125,10 @@ def main():
     cmd_migrate_hot = []
     cmd_migrate_cold = []
     num_schemes = 0
+
+    for fast, slow in args.migrate:
+        args.migrate_hot.append([slow, fast])
+        args.migrate_cold.append([fast, slow])
 
     for src_node, dest_node in args.migrate_cold:
         nodes.append((src_node, dest_node))
