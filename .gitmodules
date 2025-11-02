@@ -5,5 +5,5 @@
 	path = tools/numactl
 	url = https://github.com/skhynix/numactl.git
 [submodule "damo"]
-	path = damo
+	path = tools/damo
 	url = https://github.com/skhynix/damo.git

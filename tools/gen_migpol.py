@@ -166,7 +166,7 @@ def main():
         print("error: Run as root")
         sys.exit(1)
 
-    damo = parent_dir_of_file(__file__) + "/damo/damo"
+    damo = parent_dir_of_file(__file__) + "/damo"
     nodes = []
     node_jsons = []
 
