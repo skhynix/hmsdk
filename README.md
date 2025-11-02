@@ -14,6 +14,9 @@ HMSDK consists of multiple git submodules so please download it as follows.
 
 ## News
 
+- 2025-11-03: HMSDK v4.0 is released
+  - This release is for enhanced bandwidth and capacity expansion support
+  - It also includes bwprof tool for system bandwidth profiling
 - 2025-01-21: libnuma supports weighted-interleaved allocation APIs
 - 2024-09-16: HMSDK v3.0 is released
   - Fully aligned with various open source projects, which allows us drop local patches
