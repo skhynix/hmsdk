@@ -46,8 +46,7 @@ class MLC:
     def run_bandwidth_matrix(self):
         print("\nMeasuring Bandwidth... It takes a few minutes..")
 
-        # -W2 means 2:1 read-write ratio
-        command = f"{self.mlc} --bandwidth_matrix -W2"
+        command = f"{self.mlc} --bandwidth_matrix"
 
         out = run_with_shell(command)
         return out.decode("utf-8")
