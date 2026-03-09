@@ -10,7 +10,9 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -51,7 +53,7 @@ static struct argp_option options[] = {
     {"interval", 'i', "seconds", 0, "Bandwidth monitoring interval (default: 2)", 0},
     {"socket", 's', "socket number", 0, "Bandwidth monitoring for the given socket only", 0},
     {"data-dir", 'd', "directory", 0, "Data directory name (default: bwprof.data)", 0},
-    {"top", 0, nullptr, 0, "Show real-time output in record mode", 0}, // Removed short option
+    {"top", 256, nullptr, 0, "Show real-time output in record mode", 0},
     {nullptr, 0, nullptr, 0, nullptr, 0},
 };
 
@@ -62,6 +64,10 @@ static error_t parse_option(int key, char *arg, struct argp_state *state) {
         switch (key) {
         case 'h':
             argp_state_help(state, state->out_stream, ARGP_HELP_STD_HELP);
+            break;
+
+        case 256: // --top
+            config->show_realtime = true;
             break;
 
         case 'i':
@@ -196,18 +202,18 @@ inline double getMonotonicTimestamp() {
 
 // Check if file exists using filesystem
 inline bool fileExists(const std::string &filename) {
-    std::error_code ec;
-    bool exists = std::filesystem::exists(filename, ec);
-    bool is_regular = std::filesystem::is_regular_file(filename, ec);
-    return exists && is_regular && !ec;
+    std::error_code ec1, ec2;
+    bool exists = std::filesystem::exists(filename, ec1);
+    bool is_regular = std::filesystem::is_regular_file(filename, ec2);
+    return exists && is_regular && !ec1 && !ec2;
 }
 
 // Check if directory exists
 inline bool dirExists(const std::string &dirname) {
-    std::error_code ec;
-    bool exists = std::filesystem::exists(dirname, ec);
-    bool is_directory = std::filesystem::is_directory(dirname, ec);
-    return exists && is_directory && !ec;
+    std::error_code ec1, ec2;
+    bool exists = std::filesystem::exists(dirname, ec1);
+    bool is_directory = std::filesystem::is_directory(dirname, ec2);
+    return exists && is_directory && !ec1 && !ec2;
 }
 
 // Create directory
@@ -371,19 +377,36 @@ inline void printReport(const std::string &data_dir) {
     const size_t num_rows = all_values.size();
 
     // Initialize accumulators
-    std::vector<double> sum_values(num_columns, 0.0);
     std::vector<double> avg_values(num_columns, 0.0);
 
-    // Calculate sums and averages for all values
+    // Calculate averages for all values (column-wise averages, skipping timestamp col)
     for (const auto &row : all_values) {
         for (size_t col = 0; col < std::min(num_columns, row.size()); ++col) {
-            sum_values[col] += row[col];
+            avg_values[col] += row[col];
         }
     }
-
-    // Calculate averages for all values (column-wise averages)
     for (size_t col = 0; col < num_columns; ++col) {
-        avg_values[col] = sum_values[col] / static_cast<double>(num_rows);
+        avg_values[col] /= static_cast<double>(num_rows);
+    }
+
+    // Compute total data transferred (MB) per bandwidth column using timestamps.
+    // Each row stores bandwidth in MB/s; multiplying by the sampling interval dt
+    // gives the data transferred during that interval: data_MB = bandwidth * dt.
+    // For the first row, use the interval to the next row as an approximation.
+    std::vector<double> total_data_mb(num_columns, 0.0);
+    for (size_t row = 0; row < num_rows; ++row) {
+        double dt = 0.0;
+        if (row + 1 < num_rows) {
+            dt = all_values[row + 1][0] - all_values[row][0];
+        } else if (num_rows >= 2) {
+            // Last row: use the previous interval as an approximation
+            dt = all_values[row][0] - all_values[row - 1][0];
+        }
+        if (dt < 0.0)
+            dt = 0.0;
+        for (size_t col = 1; col < std::min(num_columns, all_values[row].size()); ++col) {
+            total_data_mb[col] += all_values[row][col] * dt;
+        }
     }
 
     // Determine number of sockets from column count (6 columns per socket, plus timestamp column)
@@ -404,14 +427,13 @@ inline void printReport(const std::string &data_dir) {
         stats.cxl_write_bw = avg_values[base_col + 4];  // CXL Write Throughput average
         stats.cxl_total_bw = avg_values[base_col + 5];  // CXL Total Throughput average
 
-        // Set accumulated values for this socket and convert to GB
-        // Sum values are in MB*seconds, convert to GB by dividing by 1000
-        stats.dram_read_sz = sum_values[base_col + 0] / 1000.0;  // DRAM Read Total Size in GB
-        stats.dram_write_sz = sum_values[base_col + 1] / 1000.0; // DRAM Write Total Size in GB
+        // Convert total data from MB to GB (total_data_mb = Σ(bandwidth_MB/s * dt_s))
+        stats.dram_read_sz = total_data_mb[base_col + 0] / 1000.0;  // DRAM Read Total Size in GB
+        stats.dram_write_sz = total_data_mb[base_col + 1] / 1000.0; // DRAM Write Total Size in GB
         stats.dram_total_sz = stats.dram_read_sz + stats.dram_write_sz; // DRAM Total Size in GB
 
-        stats.cxl_read_sz = sum_values[base_col + 3] / 1000.0;       // CXL Read Total Size in GB
-        stats.cxl_write_sz = sum_values[base_col + 4] / 1000.0;      // CXL Write Total Size in GB
+        stats.cxl_read_sz = total_data_mb[base_col + 3] / 1000.0;       // CXL Read Total Size in GB
+        stats.cxl_write_sz = total_data_mb[base_col + 4] / 1000.0;      // CXL Write Total Size in GB
         stats.cxl_total_sz = stats.cxl_read_sz + stats.cxl_write_sz; // CXL Total Size in GB
 
         // Calculate ratios based on accumulated sizes
@@ -653,6 +675,11 @@ class ProcessExecutor {
             kill(child_pid_, SIGTERM);
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             kill(child_pid_, SIGKILL);
+            // Reap the child to prevent zombie processes
+            int status;
+            waitpid(child_pid_, &status, 0);
+            running_ = false;
+            child_pid_ = -1;
         }
     }
 };
